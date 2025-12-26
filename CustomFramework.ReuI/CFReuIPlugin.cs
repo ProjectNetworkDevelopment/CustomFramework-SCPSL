@@ -4,6 +4,7 @@ using LabApi.Loader.Features.Plugins;
 using MEC;
 using RueI.API;
 using RueI.API.Elements;
+using System;
 
 namespace CustomFramework.ReuIV2
 {
@@ -15,13 +16,13 @@ namespace CustomFramework.ReuIV2
 
 		public override string Author => "Pyro Cyclone Projects";
 
-		public override Version Version => new(2, 0, 0);
+		public override Version Version => new Version(2, 0, 0);
 
-		public override Version RequiredApiVersion => new(1, 1, 0);
+		public override Version RequiredApiVersion => new Version(1, 1, 0);
 
-		public static DynamicElement DE { get; } = new(200, GetHint)
+		public static DynamicElement DE { get; } = new DynamicElement(200, GetHint)
 		{
-			UpdateInterval = new TimeSpan(0, 0, 1)
+			UpdateInterval = new System.TimeSpan(0, 0, 1)
 		};
 
 		public static string GetHint(ReferenceHub hub)

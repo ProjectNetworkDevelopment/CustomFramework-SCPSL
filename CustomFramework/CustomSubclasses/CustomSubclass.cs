@@ -105,6 +105,6 @@ namespace CustomFramework.CustomSubclasses
 
         public static CustomSubclass Get(string identifier) => Registered.FirstOrDefault(t => t.Identifier == identifier);
 
-        internal static CustomSubclass Get(int id) => Registered.FirstOrDefault(t => t.Id == id);
+        public static CustomSubclass Get(int id) => Registered.FirstOrDefault(t => t.Id == id);
     }
 }

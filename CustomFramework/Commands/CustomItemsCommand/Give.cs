@@ -26,13 +26,13 @@ namespace CustomFramework.Commands.CustomItemsCommand
 				return false;
 			}
 
-			Player player = Player.Get(sender);
-
 			if (!sender.CheckPermission(PlayerPermissions.GivingItems))
 			{
 				response = "Missing permission: GivingItems";
 				return false;
 			}
+
+			Player player = Player.Get(sender);
 
 			int p = player.PlayerId;
 
@@ -47,18 +47,16 @@ namespace CustomFramework.Commands.CustomItemsCommand
 				return false;
 			}
 
-			var itemAttr = item.GetType().GetCustomAttribute<CustomItemAttribute>();
-
 			if (p == -1)
 			{
 				foreach (Player ply in Player.List)
 				{
-					item.Give(ply, itemAttr.Item);
+					item.Give(ply);
 				}
 			}
 			else
 			{
-				item.Give(Player.Get(p), itemAttr.Item);
+				item.Give(Player.Get(p));
 			}
 
 			response = "Item given";

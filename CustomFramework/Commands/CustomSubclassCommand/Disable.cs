@@ -16,6 +16,8 @@ namespace CustomFramework.Commands.CustomSubclassCommand
 
 		public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
 		{
+			if (!sender.CheckPermission(PlayerPermissions.SetGroup, out response)) return false;
+
 			var subclass = arguments.At(0);
 
 			if (!int.TryParse(subclass, out var subclassId))

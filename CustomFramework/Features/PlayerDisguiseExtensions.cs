@@ -6,7 +6,7 @@ namespace CustomFramework.Features
 {
 	public static class PlayerDisguiseExtensions
 	{
-		public static void Disguise(this Player player, RoleTypeId? disguiseRole, Player[] affectedPlayers = null)
+		public static void SetDisguise(this Player player, RoleTypeId? disguiseRole, Player[] affectedPlayers = null)
 		{
 			if (disguiseRole == null)
 			{
@@ -15,10 +15,19 @@ namespace CustomFramework.Features
 				return;
 			}
 
+			List<Player> playerList;
+			if (affectedPlayers == null)
+			{
+				playerList = new List<Player>();
+			}
+			else
+			{
+				playerList = new List<Player>(affectedPlayers);
+			}
 			var d = new DisguisedPlayer()
 			{
 				Disguise = (RoleTypeId)disguiseRole,
-				AffectedPlayers = new List<Player>(affectedPlayers)
+				AffectedPlayers = playerList
 			};
 			CustomFrameworkPlugin.disguisedPlayers.Add(player.ReferenceHub.netId, d);
 		}

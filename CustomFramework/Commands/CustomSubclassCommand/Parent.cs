@@ -24,7 +24,7 @@ namespace CustomFramework.Commands.CustomSubclassCommand
 
         protected override bool ExecuteParent(ArraySegment<string> arguments, ICommandSender sender, out string response)
         {
-            response = "Invalid subcommand! Available: list, give.";
+            response = "Invalid subcommand! Available: list, give, disable.";
             return false;
         }
 

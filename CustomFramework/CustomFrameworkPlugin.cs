@@ -18,6 +18,8 @@ using LabApi.Events.Handlers;
 using PlayerRoles;
 using PlayerRoles.FirstPersonControl.NetworkMessages;
 using CustomFramework.Features;
+using InventorySystem.Items.Usables.Scp330;
+using CustomFramework.EventArgs;
 
 namespace CustomFramework
 {
@@ -51,16 +53,16 @@ namespace CustomFramework
         public IEnumerator<float> Coroutine()
         {
             if (Config.Debug)
-				Logger.Debug("CustomHintService coroutine started.");
+                Logger.Debug("CustomHintService coroutine started.");
 
-			while (true)
+            while (true)
             {
                 try
                 {
                     foreach (var player in Player.List.ToList())
                     {
                         var hint = GetPlayerHint(player);
-						if (!string.IsNullOrEmpty(hint))
+                        if (!string.IsNullOrEmpty(hint))
                             player.SendHint(hint);
                     }
                 }
@@ -75,21 +77,21 @@ namespace CustomFramework
 
         public string GetPlayerHint(Player player)
         {
-			var hint = GetSubclassHint(player);
-			foreach (var h in CustomHintService.hints)
-			{
-				var n = h.Invoke(player);
-				if (!string.IsNullOrEmpty(n))
-					hint += n;
-			}
-			foreach (var h in CustomHintService.timedHints.ToList())
-			{
-				if (player != h.player) continue;
-				if ((DateTime.UtcNow - h.startTime).TotalSeconds >= h.seconds) CustomHintService.timedHints.Remove(h);
-				else hint += h.hint;
-			}
+            var hint = GetSubclassHint(player);
+            foreach (var h in CustomHintService.hints)
+            {
+                var n = h.Invoke(player);
+                if (!string.IsNullOrEmpty(n))
+                    hint += n;
+            }
+            foreach (var h in CustomHintService.timedHints.ToList())
+            {
+                if (player != h.player) continue;
+                if ((DateTime.UtcNow - h.startTime).TotalSeconds >= h.seconds) CustomHintService.timedHints.Remove(h);
+                else hint += h.hint;
+            }
             return hint;
-		}
+        }
 
         public static string GetSubclassHint(Player player)
         {
@@ -115,20 +117,21 @@ namespace CustomFramework
         public override void Enable()
         {
             Logger.Debug("Custom Framework patching");
-			Patcher.PatchAll();
+            Patcher.PatchAll();
             Logger.Debug("Custom Framework finished patching");
 
             DatabaseHandler.LoadDatabase();
 
             coroutine = Timing.RunCoroutine(Coroutine());
 
-			PlayerEvents.Joined += PlayerEvents_Joined;
+            PlayerEvents.Joined += PlayerEvents_Joined;
             PlayerEvents.ChangedRole += Spawned;
-			PlayerEvents.GroupChanged += PlayerEvents_GroupChanged;
+            PlayerEvents.GroupChanged += PlayerEvents_GroupChanged;
+            PlayerEvents.ItemUsageEffectsApplying += PlayerEvents_ItemUsageEffectsApplying;
 
             ServerEvents.RoundStarted += RoundStarted;
             ServerEvents.RoundEnded += RoundEnded;
-			ServerEvents.MapGenerated += ServerEvents_MapGenerated;
+            ServerEvents.MapGenerated += ServerEvents_MapGenerated;
 
             ServerSpecificSettingsSync.DefinedSettings = new ServerSpecificSettingBase[]
             {
@@ -136,9 +139,9 @@ namespace CustomFramework
             };
             ServerSpecificSettingsSync.ServerOnSettingValueReceived += SettingValueReceived;
 
-			FpcServerPositionDistributor.RoleSyncEvent += FpcServerPositionDistributor_RoleSyncEvent;
+            FpcServerPositionDistributor.RoleSyncEvent += FpcServerPositionDistributor_RoleSyncEvent;
 
-		}
+        }
 
 		public override void Disable()
         {
@@ -150,6 +153,7 @@ namespace CustomFramework
             PlayerEvents.Joined -= PlayerEvents_Joined;
             PlayerEvents.ChangedRole -= Spawned;
             PlayerEvents.GroupChanged -= PlayerEvents_GroupChanged;
+			PlayerEvents.ItemUsageEffectsApplying -= PlayerEvents_ItemUsageEffectsApplying;
 
 			ServerEvents.RoundStarted -= RoundStarted;
             ServerEvents.RoundEnded -= RoundEnded;
@@ -160,6 +164,17 @@ namespace CustomFramework
 			FpcServerPositionDistributor.RoleSyncEvent -= FpcServerPositionDistributor_RoleSyncEvent;
 		}
 
+		// Event made by ThatGuy on the SCP:SL Discord
+		private void PlayerEvents_ItemUsageEffectsApplying(PlayerItemUsageEffectsApplyingEventArgs ev)
+        {
+            if (ev.UsableItem.Base is Scp330Bag bag)
+            {
+                CandyKindID candyKindId = bag.Candies[bag.SelectedCandyId];
+                EatenCandyEventArgs e = new EatenCandyEventArgs(candyKindId, ev.Player.ReferenceHub);
+                CustomEventHandler.OnEatenCandy(e);
+            }
+        }
+
         internal static Dictionary<uint, DisguisedPlayer> disguisedPlayers = new Dictionary<uint, DisguisedPlayer>();
 
 		private RoleTypeId FpcServerPositionDistributor_RoleSyncEvent(ReferenceHub source, ReferenceHub dest, RoleTypeId role, Mirror.NetworkWriter arg4)
@@ -169,6 +184,8 @@ namespace CustomFramework
             {
                 return disguisedPlayer.Disguise;
             }
+
+			//arg4.WriteRoleSyncInfo()
 
 			return role;
 		}

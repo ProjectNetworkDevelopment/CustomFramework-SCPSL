@@ -4,6 +4,7 @@ using HintServiceMeow.Core.Utilities;
 using LabApi.Features.Wrappers;
 using LabApi.Loader.Features.Plugins;
 using MEC;
+using System;
 using Handlers = LabApi.Events.Handlers;
 
 namespace CustomFramework.HintServiceMeow
@@ -16,11 +17,11 @@ namespace CustomFramework.HintServiceMeow
 
 		public override string Author => "Pyro Cyclone Projects";
 
-		public override Version Version => new(2, 0, 0);
+		public override Version Version => new Version(2, 0, 0);
 
-		public override Version RequiredApiVersion => new(1, 1, 0);
+		public override Version RequiredApiVersion => new Version(1, 1, 0);
 
-		public DynamicHint DynamicHint { get; } = new()
+		public DynamicHint DynamicHint { get; } = new DynamicHint()
 		{
 			AutoText = GetHint
 		};

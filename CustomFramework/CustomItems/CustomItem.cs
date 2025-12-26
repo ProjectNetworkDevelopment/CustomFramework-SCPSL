@@ -76,7 +76,7 @@ namespace CustomFramework.CustomItems
 		public virtual void Give(Player player, Item item) { }
 
 		public static CustomItem Get(string identifier) => Registered.FirstOrDefault(t => t.Identifier == identifier);
-		internal static CustomItem Get(int id) => Registered.FirstOrDefault(t => t.Id == id);
+		public static CustomItem Get(int id) => Registered.FirstOrDefault(t => t.Id == id);
 
 		internal bool TryRegister()
 		{
