@@ -1,4 +1,6 @@
-﻿using LabApi.Events.Handlers;
+﻿using CustomFramework.Interfaces;
+using LabApi.Events.Handlers;
+using LabApi.Features.Console;
 using LabApi.Features.Wrappers;
 using LabApi.Loader.Features.Plugins;
 using MEC;
@@ -6,9 +8,9 @@ using RueI.API;
 using RueI.API.Elements;
 using System;
 
-namespace CustomFramework.ReuIV2
+namespace CustomFramework.ReuI
 {
-	internal class CFReuIPlugin : Plugin
+	internal class CFReuIPlugin : Plugin//, ICoroutineObject
 	{
 		public override string Name => "CustomFramework.RueI";
 
@@ -22,30 +24,55 @@ namespace CustomFramework.ReuIV2
 
 		public static DynamicElement DE { get; } = new DynamicElement(200, GetHint)
 		{
-			UpdateInterval = new System.TimeSpan(0, 0, 1)
+			//UpdateInterval = new System.TimeSpan(0, 0, 1)
+			VerticalAlign = RueI.API.Elements.Enums.VerticalAlign.Up
 		};
+
+		public static Tag Tag = new Tag("CustomFramework hints.");
 
 		public static string GetHint(ReferenceHub hub)
 		{
 			var player = Player.Get(hub);
-			return CustomFrameworkPlugin.Instance.GetPlayerHint(player);
+			var hint = CustomFrameworkPlugin.Instance.GetPlayerHint(player);
+			return hint;
 		}
 
 		public override void Enable()
 		{
+			Logger.Debug("Enabling RueI integration.");
 			var c = CustomFrameworkPlugin.Instance.coroutine;
 			Timing.KillCoroutines(c);
-			PlayerEvents.Joined += PlayerEvents_Joined;
+			//coroutine = Timing.RunCoroutine(Coroutine());
+			PlayerEvents.Spawned += PlayerEvents_Spawned;
+			Logger.Debug("RueI integration enabled.");
 		}
 
 		public override void Disable()
 		{
-			PlayerEvents.Joined -= PlayerEvents_Joined;
+			//if (coroutine.IsRunning) Timing.KillCoroutines(coroutine);
+
+			PlayerEvents.Spawned -= PlayerEvents_Spawned;
 		}
 
-		private void PlayerEvents_Joined(LabApi.Events.Arguments.PlayerEvents.PlayerJoinedEventArgs ev)
+		private void PlayerEvents_Spawned(LabApi.Events.Arguments.PlayerEvents.PlayerSpawnedEventArgs ev)
 		{
-			Display.Get(ev.Player.ReferenceHub).Show(new Tag(), DE);
+			RueDisplay.Get(ev.Player.ReferenceHub).Show(Tag, DE);
 		}
+
+		//public CoroutineHandle coroutine { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
+		//public IEnumerator<float> Coroutine()
+		//{
+		//	while (true)
+		//	{
+		//		Logger.Debug("Running hint update loop.");
+		//		Timing.WaitForSeconds(1f);
+
+		//		foreach (var player in Player.ReadyList)
+		//		{
+		//			RueDisplay.Get(player.ReferenceHub).Update();
+		//		}
+		//	}
+		//}
 	}
 }
