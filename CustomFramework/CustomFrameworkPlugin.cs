@@ -213,12 +213,12 @@ namespace CustomFramework
                 {
                     try
                     {
-
                         var player = Player.Get(sender);
                         if (PlayerSubclasses.ContainsKey(player))
                         {
                             var cs = CustomSubclass.Get(PlayerSubclasses[player]);
-                            cs?.OnAbility(player);
+                            if (cs != null && cs.CanUseAbility(player))
+                                cs.OnAbility(player);
                         }
                     }
                     catch (Exception ex)

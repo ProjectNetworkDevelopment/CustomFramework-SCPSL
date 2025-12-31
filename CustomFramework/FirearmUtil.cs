@@ -9,8 +9,8 @@ namespace CustomFramework
 		{
 			if (firearm.TryGetModule<MagazineModule>(out var module))
 			{
-				module.AmmoStored = amount;
-			}
+				module.ServerSetInstanceAmmo(firearm.ItemSerial, amount);
+            }
 		}
 	}
 }

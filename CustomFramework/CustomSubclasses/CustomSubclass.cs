@@ -1,11 +1,14 @@
 ﻿using CustomFramework.Features;
+using CustomFramework.Interfaces;
 using LabApi.Features.Console;
 using LabApi.Features.Wrappers;
+using MEC;
 using PlayerRoles;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Rendering;
 using VoiceChat;
 
 namespace CustomFramework.CustomSubclasses
@@ -27,17 +30,38 @@ namespace CustomFramework.CustomSubclasses
         public virtual Vector3 Scale { get; set; } = Vector3.one;
         public virtual bool IsEscapeRole { get; set; } = true;
 
+        public bool CanUseAbility(Player player) {
+            IAbilityCooldown cooldown = this as IAbilityCooldown;
+            IAbilityDuration duration = this as IAbilityDuration;
+
+            return (!cooldown?.ActiveCooldowns.Contains(player) ?? true) &&
+                (!duration?.ActiveAbilities.Contains(player) ?? true);
+        }
+
         public List<Player> TrackedPlayers { get; set; } = new List<Player>();
 
         public virtual bool Check(Player player) => TrackedPlayers.Contains(player);
-        
+        public static bool Check(string identifier, Player player) =>
+            Get(identifier).Check(player);
+        public static bool Check(int id, Player player) =>
+            Get(id).Check(player);
+
         public virtual bool SpawnConditionsMet(Player player) => true;
 
 		public virtual void SubscribeEvents() { }
         public virtual void UnsubscribeEvents() { }
-        public virtual void OnAbility(Player player) { }
+        public virtual void OnAbility(Player player) {
+            RunDuration(player);
+        }
 
-        public virtual string GetSpecificHint(Player player) => string.Empty;
+        protected virtual void OnAbilityEnd(Player player) { }
+        protected virtual void OnCooldownEnd(Player player) { }
+
+        public virtual string GetSpecificHint(Player player) =>
+            (this is IAbilityDuration duration && duration.ActiveAbilities.Contains(player)) ?
+                "Ability Active" :
+            (this is IAbilityCooldown cooldown && cooldown.ActiveCooldowns.Contains(player)) ?
+                "Cooldown Active" : string.Empty;
 
         //protected Vector3 PriorScale = Vector3.one;
 
@@ -68,9 +92,21 @@ namespace CustomFramework.CustomSubclasses
             player.CustomInfo = "";
             CustomFrameworkPlugin.PlayerSubclasses[player] = "";
             player.ReferenceHub.transform.localScale = Vector3.one;
+
+            if (this is IAbilityDuration duration)
+                duration.ActiveAbilities.Remove(player);
+            if (this is IAbilityCooldown cooldown)
+                cooldown.ActiveCooldowns.Remove(player);
         }
 
-        public virtual void Init() => SubscribeEvents();
+        public virtual void Init() {
+            if (this is IAbilityDuration duration)
+                duration.ActiveAbilities = new HashSet<Player>();
+            if (this is IAbilityCooldown cooldown)
+                cooldown.ActiveCooldowns = new HashSet<Player>();
+
+            SubscribeEvents();
+        }
 
         public virtual void Destroy()
         {
@@ -103,8 +139,35 @@ namespace CustomFramework.CustomSubclasses
             return Registered.Remove(this);
         }
 
-        public static CustomSubclass Get(string identifier) => Registered.FirstOrDefault(t => t.Identifier == identifier);
+        protected virtual void RunDuration(Player player) {
+            if (this is IAbilityDuration duration && duration.AbilityDuration > 0) {
+                duration.ActiveAbilities.Add(player);
+                Timing.CallDelayed(duration.AbilityDuration, () => {
+                    RunCooldown(player);
+                    duration.ActiveAbilities.Remove(player);
+                    OnAbilityEnd(player);
+                });
+            } else {
+                RunCooldown(player);
+            }
+        }
+        protected virtual void RunCooldown(Player player) {
+            if (this is IAbilityCooldown cooldown && cooldown.AbilityCooldown > 0) {
+                cooldown.ActiveCooldowns.Add(player);
+                Timing.CallDelayed(cooldown.AbilityCooldown, () => {
+                    cooldown.ActiveCooldowns.Remove(player);
+                    OnCooldownEnd(player);
+                });
+            }
+        }
 
-        public static CustomSubclass Get(int id) => Registered.FirstOrDefault(t => t.Id == id);
+        public static CustomSubclass Get(string identifier) =>
+            Registered.FirstOrDefault(t => t.Identifier == identifier);
+
+        public static CustomSubclass Get(int id) =>
+            Registered.FirstOrDefault(t => t.Id == id);
+
+        public static CustomSubclass Get(Player player) =>
+            Registered.FirstOrDefault(r => r.Check(player));
     }
 }
