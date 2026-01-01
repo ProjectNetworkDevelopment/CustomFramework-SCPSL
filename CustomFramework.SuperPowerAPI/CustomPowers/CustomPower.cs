@@ -1,7 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Collections.Generic;
+using CustomFramework.SuperPowerAPI.Events;
 using LabApi.Features.Console;
 using LabApi.Features.Wrappers;
 
@@ -12,20 +13,47 @@ namespace CustomFramework.SuperPowerAPI.CustomPowers
         public Dictionary<Player, int> TrackedPlayers { get; set; } = new Dictionary<Player, int>();
 		public abstract int Id { get; }
 		public abstract string Name { get; }
+		public abstract float Tickets { get; }
         public abstract string Info { get; }
         public virtual string Description => Info;
+		public virtual bool IsKeybindPower => false;
 
         public virtual void Enabled() { }
 
         public virtual void Disabled() { }
 
-        public virtual bool CanUse() => true;
+        public virtual bool CanUse(Player player) => true;
 
-        public virtual bool Check(Player player) =>
-			TrackedPlayers.ContainsKey(player) && TrackedPlayers[player] > 0;
+		public virtual void Use(Player player) { }
+
+		public virtual void Give(Player player, byte intensity = 1)
+		{
+			if (TrackedPlayers.ContainsKey(player))
+			{
+				TrackedPlayers[player] = intensity;
+			}
+			else
+			{
+				TrackedPlayers.Add(player, intensity);
+			}
+			player.SendBroadcast($"You gained {Name}: {Info}\nUse .powerinfo (or .pi) to gain info about your powers.", 5);
+		}
+
+		public virtual void Remove(Player player)
+		{
+			if (TrackedPlayers.ContainsKey(player))
+			{
+				TrackedPlayers.Remove(player);
+			}
+		}
+
+		public virtual bool Check(Player player)
+        {
+			return player != null && TrackedPlayers.TryGetValue(player, out var p) && p > 0;
+        }
 
 		public static CustomPower Get(string power) =>
-			Registered.FirstOrDefault(t => t.Name.Equals(power, System.StringComparison.OrdinalIgnoreCase));
+			Registered.FirstOrDefault(t => t.Name.Equals(power, StringComparison.OrdinalIgnoreCase));
 
 		public static CustomPower Get(int id) =>
 			Registered.FirstOrDefault(t => t.Id == id);
@@ -48,21 +76,32 @@ namespace CustomFramework.SuperPowerAPI.CustomPowers
 			return customPower != null;
 		}
 
-		public static IEnumerable<CustomPower> RegisterPowers(Assembly assembly = null)
+		public static IEnumerable<CustomPower> RegisterPowers()
 		{
-			List<CustomPower> powers = new List<CustomPower>();
-			if (assembly == null)
-				assembly = Assembly.GetExecutingAssembly();
+			Logger.Debug("Registering Powers...");
 
-			foreach (Type type in assembly.GetTypes().Where(t => t.BaseType == typeof(CustomPower) && !t.IsAbstract).ToList())
+			Assembly assembly = Assembly.GetCallingAssembly();
+
+			foreach (Type type in assembly.GetTypes())
 			{
-				CustomPower power = null;
-				power = (CustomPower)Activator.CreateInstance(type);
-				if (power.TryRegister())
-					powers.Add(power);
+				if (type.IsAbstract) continue;
+				else if (typeof(CustomPower).IsAssignableFrom(type))
+				{
+					try
+					{
+						CustomPower power = (CustomPower)Activator.CreateInstance(type);
+						Logger.Debug($"Attempting to register power {power.Name}");
+						if (!power.TryRegister())
+							Logger.Debug($"Could not register power {power.Name}");
+					}
+					catch (Exception ex)
+					{
+						Logger.Error($"Failed to initiate power {type.FullName}: {ex}");
+					}
+				}
 			}
 
-			return powers;
+			return null;
 		}
 
 		public static HashSet<CustomPower> Registered { get; } = new HashSet<CustomPower>();
@@ -71,11 +110,17 @@ namespace CustomFramework.SuperPowerAPI.CustomPowers
 		{
 			if (!Registered.Contains(this))
 			{
-				Enabled();
+				if (Registered.Any(r => r.Id == Id || r.Name == Name))
+				{
+					Logger.Warn($"{Name} was already registered.");
+					return false;
+				}
+
 				Registered.Add(this);
-				Logger.Debug($"Power {Name} registered");
+				Enabled();
 				return true;
 			}
+
 			return false;
 		}
 	}
