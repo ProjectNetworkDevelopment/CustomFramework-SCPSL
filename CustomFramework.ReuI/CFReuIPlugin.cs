@@ -24,7 +24,7 @@ namespace CustomFramework.ReuI
 
 		public static DynamicElement DE { get; } = new DynamicElement(200, GetHint)
 		{
-			//UpdateInterval = new System.TimeSpan(0, 0, 1)
+			UpdateInterval = new System.TimeSpan(0, 0, 1),
 			VerticalAlign = RueI.API.Elements.Enums.VerticalAlign.Up
 		};
 
