@@ -11,7 +11,6 @@ using LabApi.Features.Wrappers;
 using LabApi.Events.Arguments.PlayerEvents;
 using LabApi.Events.Arguments.ServerEvents;
 using LabApi.Features.Console;
-using Handlers = LabApi.Events.Handlers;
 using HarmonyLib;
 using CustomFramework.CustomItems;
 using LabApi.Events.Handlers;
@@ -20,6 +19,7 @@ using PlayerRoles.FirstPersonControl.NetworkMessages;
 using CustomFramework.Features;
 using InventorySystem.Items.Usables.Scp330;
 using CustomFramework.EventArgs;
+using CustomFramework.Commands;
 
 namespace CustomFramework
 {
@@ -132,11 +132,9 @@ namespace CustomFramework
             ServerEvents.RoundStarted += RoundStarted;
             ServerEvents.RoundEnded += RoundEnded;
             ServerEvents.MapGenerated += ServerEvents_MapGenerated;
+			ServerEvents.RoundRestarted += ServerEvents_RoundRestarted;
 
-            ServerSpecificSettingsSync.DefinedSettings = new ServerSpecificSettingBase[]
-            {
-                new SSKeybindSetting(0, "Subclass Ability", UnityEngine.KeyCode.Z, true, false, null, 255)
-            };
+			ServerSpecificSettingsSync.DefinedSettings.AddItem(new SSKeybindSetting(0, "Subclass Ability", UnityEngine.KeyCode.Z, true, false, null, 255));
             ServerSpecificSettingsSync.ServerOnSettingValueReceived += SettingValueReceived;
 
             FpcServerPositionDistributor.RoleSyncEvent += FpcServerPositionDistributor_RoleSyncEvent;
@@ -158,8 +156,9 @@ namespace CustomFramework
 			ServerEvents.RoundStarted -= RoundStarted;
             ServerEvents.RoundEnded -= RoundEnded;
             ServerEvents.MapGenerated -= ServerEvents_MapGenerated;
+            ServerEvents.RoundRestarted -= ServerEvents_RoundRestarted;
 
-            ServerSpecificSettingsSync.ServerOnSettingValueReceived -= SettingValueReceived;
+			ServerSpecificSettingsSync.ServerOnSettingValueReceived -= SettingValueReceived;
 
 			FpcServerPositionDistributor.RoleSyncEvent -= FpcServerPositionDistributor_RoleSyncEvent;
 		}
@@ -198,6 +197,8 @@ namespace CustomFramework
 		private void PlayerEvents_Joined(PlayerJoinedEventArgs ev)
 		{
             ServerSpecificSettingsSync.SendToPlayer(ev.Player.ReferenceHub, ServerSpecificSettingsSync.DefinedSettings);
+            if (ExperimentalMode.IsEnabled)
+                ev.Player.SendBroadcast("Experimental Mode is enabled this round. Expect jankyness or OP things.", 10);
 		}
 
 		private void ServerEvents_MapGenerated(MapGeneratedEventArgs ev)
@@ -326,6 +327,12 @@ namespace CustomFramework
 			foreach (var coroutineItem in coroutineItems)
 				if (coroutineItem.coroutine != null && coroutineItem.coroutine.IsRunning)
 					Timing.KillCoroutines(coroutineItem.coroutine);
+		}
+
+		private void ServerEvents_RoundRestarted()
+		{
+			disguisedPlayers.Clear();
+            ExperimentalMode.IsEnabled = false;
 		}
 
         public static void RegisterAll()
