@@ -15,25 +15,25 @@
 
   <ItemGroup>
     <Reference Include="0Harmony">
-      <HintPath>..\..\..\..\..\..\AppData\Roaming\EXILED\Plugins\dependencies\0Harmony.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\..\AppData\Roaming\EXILED\Plugins\dependencies\0Harmony.dll</HintPath>
     </Reference>
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\..\..\..\SCP_SL\SCPSL_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\SCP Secret Laboratory Dedicated Server\SCPSL_Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="Assembly-CSharp-firstpass">
-      <HintPath>..\..\..\..\..\SCP_SL\SCPSL_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\..\..\..\sl_server\SCPSL_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
     </Reference>
     <Reference Include="CommandSystem.Core">
-      <HintPath>..\..\..\..\..\SCP_SL\SCPSL_Data\Managed\CommandSystem.Core.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\..\..\..\sl_server\SCPSL_Data\Managed\CommandSystem.Core.dll</HintPath>
     </Reference>
     <Reference Include="HintServiceMeow">
-      <HintPath>..\..\..\..\..\..\AppData\Roaming\SCP Secret Laboratory\LabAPI\dependencies\global\HintServiceMeow-LabAPI.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\..\..\..\sl_server\SCPSL_Data\Plugins\HintServiceMeow-LabAPI.dll</HintPath>
     </Reference>
     <Reference Include="Mirror">
-      <HintPath>..\..\..\..\..\SCP_SL\SCPSL_Data\Managed\Mirror.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\..\..\..\sl_server\SCPSL_Data\Managed\Mirror.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\..\..\..\..\SCP_SL\SCPSL_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\..\..\..\sl_server\SCPSL_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
   </ItemGroup>
 

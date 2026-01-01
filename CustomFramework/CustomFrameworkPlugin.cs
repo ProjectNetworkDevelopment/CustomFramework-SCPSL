@@ -45,7 +45,7 @@ namespace CustomFramework
 
         public override string Author => "Pyro Cyclone Projects";
 
-        public override Version Version => new Version(2, 0, 0);
+        public override Version Version => new Version(3, 3, 0);
 
         public override Version RequiredApiVersion => new Version(1, 0, 0);
 
@@ -214,12 +214,12 @@ namespace CustomFramework
                 {
                     try
                     {
-
                         var player = Player.Get(sender);
                         if (PlayerSubclasses.ContainsKey(player))
                         {
                             var cs = CustomSubclass.Get(PlayerSubclasses[player]);
-                            cs?.OnAbility(player);
+                            if (cs != null && cs.CanUseAbility(player))
+                                cs.OnAbility(player);
                         }
                     }
                     catch (Exception ex)
