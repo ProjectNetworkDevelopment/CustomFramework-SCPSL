@@ -4,6 +4,7 @@ using System;
 
 namespace CustomFramework.Commands
 {
+	[CommandHandler(typeof(RemoteAdminCommandHandler))]
 	public class ExperimentalMode : ICommand
 	{
 		public static bool IsEnabled = false;
