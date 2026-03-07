@@ -52,8 +52,8 @@ namespace CustomFramework.Commands.CustomSubclassCommand
             {
                 foreach (Player ply in Player.List)
                 {
-                    if (CustomFrameworkPlugin.PlayerSubclasses[ply] != null && CustomFrameworkPlugin.PlayerSubclasses[ply] != "")
-                        CustomSubclass.Get(CustomFrameworkPlugin.PlayerSubclasses[ply]).RemoveSubclass(ply);
+                    if (CustomSubclass.PlayerSubclasses[ply] != null && CustomSubclass.PlayerSubclasses[ply] != "")
+                        CustomSubclass.Get(CustomSubclass.PlayerSubclasses[ply]).RemoveSubclass(ply);
                     if (arguments.Count == 3)
                         subclass.GiveSubclass(ply, arguments.At(2) == "true");
                     else
@@ -75,8 +75,8 @@ namespace CustomFramework.Commands.CustomSubclassCommand
                     return false;
                 }
 
-                if (CustomFrameworkPlugin.PlayerSubclasses[Player.Get(p)] != null && CustomFrameworkPlugin.PlayerSubclasses[Player.Get(p)] != "")
-                    CustomSubclass.Get(CustomFrameworkPlugin.PlayerSubclasses[Player.Get(p)]).RemoveSubclass(Player.Get(p));
+                if (CustomSubclass.PlayerSubclasses[Player.Get(p)] != null && CustomSubclass.PlayerSubclasses[Player.Get(p)] != "")
+                    CustomSubclass.Get(CustomSubclass.PlayerSubclasses[Player.Get(p)]).RemoveSubclass(Player.Get(p));
 
                 if (arguments.Count >= 3)
                     subclass.GiveSubclass(Player.Get(p), arguments.At(2) == "true");

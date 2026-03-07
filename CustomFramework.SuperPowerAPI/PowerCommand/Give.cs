@@ -17,9 +17,14 @@ namespace CustomFramework.SuperPowerAPI.PowerCommand
 
 		public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
 		{
+			if (!sender.CheckPermission(PlayerPermissions.Effects, out response))
+			{
+				return false;
+			}
+
 			Player player = Player.Get(sender);
 
-			if (arguments.Count < 1)
+			if (arguments.Count < 2)
 			{
 				response = "give <PowerId> <Intensity> [PlayerId|*]";
 				return false;
@@ -64,16 +69,6 @@ namespace CustomFramework.SuperPowerAPI.PowerCommand
 			}
 			else // if (person != player.PlayerId)
 			{
-				if (Player.Get(p) == player && !sender.CheckPermission(PlayerPermissions.ForceclassSelf) && !sender.CheckPermission(PlayerPermissions.ForceclassWithoutRestrictions))
-				{
-					response = "Missing permission: requires ForceclassSelf OR ForceclassWithoutRestrictions.";
-					return false;
-				}
-				if (!sender.CheckPermission(PlayerPermissions.ForceclassWithoutRestrictions))
-				{
-					response = "Missing permission: requires ForceclassWithoutRestrictions.";
-					return false;
-				}
 
 				subclass.Give(Player.Get(p), intensity);
 				response = "Power given to player.";
