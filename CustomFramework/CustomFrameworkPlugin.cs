@@ -21,6 +21,8 @@ using InventorySystem.Items.Usables.Scp330;
 using CustomFramework.EventArgs;
 using CustomFramework.Commands;
 using CustomFramework.CustomTeams;
+using CustomFramework.CustomHintService;
+using CustomFramework.CustomTextService;
 
 namespace CustomFramework
 {
@@ -49,48 +51,10 @@ namespace CustomFramework
 
         public override Version RequiredApiVersion => new Version(1, 0, 0);
 
-        public CoroutineHandle coroutine { get; set; }
-        public IEnumerator<float> Coroutine()
+        public DynamicHint SubclassHint { get; } = new DynamicHint(new Style()
         {
-            Logger.Debug("CustomHintService coroutine started.", Config.Debug);
-
-            while (true)
-            {
-                try
-                {
-                    foreach (var player in Player.ReadyList.ToList())
-                    {
-                        var hint = GetPlayerHint(player);
-                        if (!string.IsNullOrEmpty(hint))
-                            player.SendHint(hint);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error($"[CustomFramework] Error in CustomHintService coroutine: {ex}");
-                }
-
-                yield return Timing.WaitForSeconds(1f);
-            }
-        }
-
-        public string GetPlayerHint(Player player)
-        {
-            var hint = GetSubclassHint(player);
-            foreach (var h in CustomHintService.hints)
-            {
-                var n = h.Invoke(player);
-                if (!string.IsNullOrEmpty(n))
-                    hint += n;
-            }
-            foreach (var h in CustomHintService.timedHints.ToList())
-            {
-                if (player != h.player) continue;
-                if ((DateTime.UtcNow - h.startTime).TotalSeconds >= h.seconds) CustomHintService.timedHints.Remove(h);
-                else hint += h.hint;
-            }
-            return hint;
-        }
+            Alignment = Alignment.Left,
+        }, GetSubclassHint);
 
         public static string GetSubclassHint(Player player)
         {
@@ -121,7 +85,6 @@ namespace CustomFramework
 
             DatabaseHandler.LoadDatabase();
 
-            coroutine = Timing.RunCoroutine(Coroutine());
 
             PlayerEvents.Joined += PlayerEvents_Joined;
             PlayerEvents.GroupChanged += PlayerEvents_GroupChanged;
@@ -139,14 +102,12 @@ namespace CustomFramework
 
             CustomSubclass.SubscribeStaticEvents();
             CustomTeam.SubscribeStaticEvents();
+            CustomHintService.CustomHintService.Init();
         }
 
 		public override void Disable()
         {
 			Patcher.UnpatchAll("PyroCycloneProjects.CustomFramework");
-
-            if (coroutine.IsRunning)
-                Timing.KillCoroutines(coroutine);
 
             PlayerEvents.Joined -= PlayerEvents_Joined;
             PlayerEvents.GroupChanged -= PlayerEvents_GroupChanged;
@@ -163,6 +124,8 @@ namespace CustomFramework
 
             CustomSubclass.UnsubscribeStaticEvents();
             CustomTeam.UnsubscribeStaticEvents();
+            CustomHintService.CustomHintService.DynamicHints.Clear();
+            CustomHintService.CustomHintService.StaticHints.Clear();
 		}
 
 		private void PlayerEvents_PickedUpItem(PlayerPickedUpItemEventArgs ev)
@@ -195,9 +158,11 @@ namespace CustomFramework
 
 		private void PlayerEvents_Joined(PlayerJoinedEventArgs ev)
 		{
+            CustomHintService.CustomHintService.RegisterHint(SubclassHint, ev.Player);
+
             ServerSpecificSettingsSync.SendToPlayer(ev.Player.ReferenceHub, ServerSpecificSettingsSync.DefinedSettings);
             if (ExperimentalMode.IsEnabled)
-                ev.Player.SendBroadcast("Experimental Mode is enabled this round. Expect jankyness or OP things.", 10);
+                ev.Player.SendBroadcast("Experimental Mode is enabled this round. Expect jank.", 10);
 		}
 
 		private void ServerEvents_MapGenerated(MapGeneratedEventArgs ev)
