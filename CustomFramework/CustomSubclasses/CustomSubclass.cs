@@ -30,7 +30,6 @@ namespace CustomFramework.CustomSubclasses
 			PlayerEvents.ChangedRole += PlayerEvents_ChangedRole;
 
             FpcServerPositionDistributor.RoleSyncEvent += FpcServerPositionDistributor_RoleSyncEvent;
-
 		}
 
         internal static void UnsubscribeStaticEvents()
@@ -258,6 +257,7 @@ namespace CustomFramework.CustomSubclasses
                 RunCooldown(player);
             }
         }
+
         protected virtual void RunCooldown(Player player) {
             if (this is IAbilityCooldown cooldown && cooldown.AbilityCooldown > 0) {
                 cooldown.ActiveCooldowns.Add(player);
