@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace CustomFramework.Features
 {
-	public class DisguisedPlayer
+	internal class DisguisedPlayer
 	{
 		public RoleTypeId Disguise { get; set; }
 		public List<Player> AffectedPlayers { get; set; }

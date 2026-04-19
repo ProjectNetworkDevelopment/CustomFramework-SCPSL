@@ -28,11 +28,17 @@ namespace CustomFramework.CustomItems
 		private void Init()
 		{
 			SubcribeEvents();
+<<<<<<< HEAD
+=======
+			Handlers.PlayerEvents.PickedUpItem += PlayerEvents_PickedUpItem;
+			Handlers.PlayerEvents.ChangedItem += PlayerEvents_ChangedItem;
+>>>>>>> b958e0dc87f69ff2fa0ed65d0190dc0c3f898a2d
 		}
 
 		private void Destroy()
 		{
 			UnsubcribeEvents();
+<<<<<<< HEAD
 		}
 		
 		public virtual void PickedUp(Player player)
@@ -45,6 +51,23 @@ namespace CustomFramework.CustomItems
 		{
 			var hint = new StaticHint(CustomTextService.Style.Default, $"Switched to {Name}", TimeSpan.FromSeconds(3));
 			CustomHintService.CustomHintService.RegisterHint(hint, player);
+=======
+			Registered.Clear();
+			Handlers.PlayerEvents.PickedUpItem -= PlayerEvents_PickedUpItem;
+			Handlers.PlayerEvents.ChangedItem -= PlayerEvents_ChangedItem;
+		}
+		
+		private void PlayerEvents_ChangedItem(LabApi.Events.Arguments.PlayerEvents.PlayerChangedItemEventArgs ev)
+		{
+			if (Check(ev.NewItem))
+				CustomHintService.AddTimedHint($"Switched to {Name}\n", 3, ev.Player);
+		}
+		
+		private void PlayerEvents_PickedUpItem(LabApi.Events.Arguments.PlayerEvents.PlayerPickedUpItemEventArgs ev)
+		{
+			if (Check(ev.Item))
+				CustomHintService.AddTimedHint($"Picked up {Name}\n", 3, ev.Player);
+>>>>>>> b958e0dc87f69ff2fa0ed65d0190dc0c3f898a2d
 		}
 
 		public virtual bool Check(Item item) => item != null && TrackedSerials.Contains(item.Serial);
@@ -60,7 +83,7 @@ namespace CustomFramework.CustomItems
 			return pickup;
 		}
 
-		public virtual Item Give(Player player, ItemType? item = null)
+		public virtual void Give(Player player, ItemType? item = null)
 		{
 			if (item == null) item = DefaultBaseItem;
 			var i = player.AddItem((ItemType)item);
@@ -70,14 +93,12 @@ namespace CustomFramework.CustomItems
 			CustomHintService.CustomHintService.RegisterHint(hint, player);
 			
 			Give(player, i);
-			return i;
 		}
 
 		public virtual void Give(Player player, Item item) { }
 
 		public static CustomItem Get(string identifier) => Registered.FirstOrDefault(t => t.Identifier == identifier);
 		public static CustomItem Get(int id) => Registered.FirstOrDefault(t => t.Id == id);
-		public static CustomItem Get(Item item) => Registered.FirstOrDefault(r => r.Check(item));
 
 		internal bool TryRegister()
 		{

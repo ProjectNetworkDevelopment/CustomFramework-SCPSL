@@ -1,4 +1,5 @@
-﻿using PlayerRoles;
+﻿using CustomFramework.Enums;
+using PlayerRoles;
 
 namespace CustomFramework.CustomSubclasses
 {

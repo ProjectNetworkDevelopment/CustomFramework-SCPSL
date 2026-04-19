@@ -1,17 +1,15 @@
 ﻿using CustomFramework.Features;
 using CustomFramework.Interfaces;
-using LabApi.Events.Arguments.PlayerEvents;
-using LabApi.Events.Handlers;
+using LabApi.Features.Console;
 using LabApi.Features.Wrappers;
 using MEC;
 using PlayerRoles;
-using PlayerRoles.FirstPersonControl.NetworkMessages;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Rendering;
 using VoiceChat;
-using Logger = LabApi.Features.Console.Logger;
 
 namespace CustomFramework.CustomSubclasses
 {
@@ -20,9 +18,8 @@ namespace CustomFramework.CustomSubclasses
         public static HashSet<CustomSubclass> Registered = new HashSet<CustomSubclass>();
 
         public static HashSet<CustomSubclass> Disabled = new HashSet<CustomSubclass>();
-		public static Dictionary<Player, string> PlayerSubclasses { get; set; } = new Dictionary<Player, string>();
-		public static Dictionary<uint, DisguisedPlayer> DisguisedPlayers { get; set; } = new Dictionary<uint, DisguisedPlayer>();
 
+<<<<<<< HEAD
 		public static System.Random Random = CustomFrameworkPlugin.Random;
 
 		internal static void SubscribeStaticEvents()
@@ -124,6 +121,9 @@ namespace CustomFramework.CustomSubclasses
 		}
 
 		public abstract int Id { get; set; }
+=======
+        public abstract int Id { get; set; }
+>>>>>>> b958e0dc87f69ff2fa0ed65d0190dc0c3f898a2d
         public abstract string Identifier { get; set; }
         public abstract string Name { get; set; }
         public abstract float SpawnTickets { get; set; }
@@ -132,11 +132,9 @@ namespace CustomFramework.CustomSubclasses
         public abstract string CustomInfo { get; set; }
         //public virtual VoiceChatChannel VoiceChatChannel { get; set; } = VoiceChatChannel.None;
         public virtual Vector3 Scale { get; set; } = Vector3.one;
-        public virtual Vector3 Gravity { get; set; } = Vector3.one;
         public virtual bool IsEscapeRole { get; set; } = true;
-        public virtual RoleTypeId? DefaultRole { get; set; } = null;
 
-		public bool CanUseAbility(Player player) {
+        public bool CanUseAbility(Player player) {
             IAbilityCooldown cooldown = this as IAbilityCooldown;
             IAbilityDuration duration = this as IAbilityDuration;
 
@@ -173,31 +171,30 @@ namespace CustomFramework.CustomSubclasses
 
         public virtual void GiveSubclass(Player player, bool setRole)
         {
-            Logger.Debug($"Giving {player.Nickname} {Identifier} subclass.");
+            LabApi.Features.Console.Logger.Debug($"Giving {player.Nickname} {Identifier} subclass.");
 
             TrackedPlayers.Add(player);
             player.CustomInfo = CustomInfo;
-            PlayerSubclasses[player] = Identifier;
+            CustomFrameworkPlugin.PlayerSubclasses[player] = Identifier;
             //PriorScale = player.ReferenceHub.transform.localScale;
             //player.ReferenceHub.transform.localScale = Vector3.Scale(player.ReferenceHub.transform.localScale, Scale);
             player.SetScale(Scale);
-            player.Gravity = Vector3.Scale(player.Gravity, Gravity);
             player.SendBroadcast($"You are the {Name}.\n{Description}", 5);
 
-            if (setRole && DefaultRole != null)
-                player.SetRole((RoleTypeId)DefaultRole, flags: RoleSpawnFlags.None, reason: (RoleChangeReason)12);
+    //        if (setRole)
+				//player.SetRole(GetType().GetCustomAttribute<CustomSubclassAttribute>().Team);
 		}
 
         public virtual void RemoveSubclass(Player player)
         {
-			Logger.Debug($"Removing {Identifier} subclass from {player.Nickname}.");
+			LabApi.Features.Console.Logger.Debug($"Removing {Identifier} subclass from {player.Nickname}.");
 
             if (player == null) return;
 
             if (TrackedPlayers.Contains(player))
                 TrackedPlayers.Remove(player);
             player.CustomInfo = "";
-            PlayerSubclasses[player] = "";
+            CustomFrameworkPlugin.PlayerSubclasses[player] = "";
             player.ReferenceHub.transform.localScale = Vector3.one;
 
             if (this is IAbilityDuration duration)
@@ -218,6 +215,7 @@ namespace CustomFramework.CustomSubclasses
         public virtual void Destroy()
         {
             UnsubscribeEvents();
+            Registered.Clear();
         }
 
         internal bool TryRegister()
@@ -226,7 +224,7 @@ namespace CustomFramework.CustomSubclasses
             {
                 if (Registered.Any(r => r.Identifier == Identifier || r.Id == Id))
                 {
-					Logger.Warn($"{Identifier} was already registered.");
+					LabApi.Features.Console.Logger.Warn($"{Identifier} was already registered.");
                     return false;
                 }
 
@@ -235,7 +233,7 @@ namespace CustomFramework.CustomSubclasses
                 return true;
             }
 
-			Logger.Warn($"Couldn't register {Name} ({Identifier})");
+			LabApi.Features.Console.Logger.Warn($"Couldn't register {Name} ({Identifier})");
             return false;
         }
 

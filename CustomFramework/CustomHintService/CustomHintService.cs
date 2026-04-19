@@ -30,7 +30,9 @@ namespace CustomFramework.CustomHintService
 				{
 					foreach (var player in Player.ReadyList.ToList())
 					{
-						var hint = GetPlayerHint(player);
+						if (player == null) continue;
+
+                        var hint = GetPlayerHint(player);
 						if (!string.IsNullOrEmpty(hint))
 							player.SendHint(hint);
 					}
