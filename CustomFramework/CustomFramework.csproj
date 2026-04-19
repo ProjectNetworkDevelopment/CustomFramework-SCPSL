@@ -15,7 +15,7 @@
 
   <ItemGroup>
     <Reference Include="0Harmony">
-      <HintPath>bin\Debug\net4.8\0Harmony.dll</HintPath>
+      <HintPath>C:\Users\firestorm\AppData\Roaming\SCP Secret Laboratory\LabAPI\dependencies\global\0Harmony.dll</HintPath>
     </Reference>
     <Reference Include="Assembly-CSharp">
       <HintPath>C:\Users\firestorm\Desktop\SCP_SL\SCPSL_Data\Managed\Assembly-CSharp.dll</HintPath>

@@ -1,4 +1,6 @@
-﻿using LabApi.Features.Wrappers;
+﻿using CustomFramework.CustomHintService;
+using LabApi.Features.Wrappers;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -37,26 +39,16 @@ namespace CustomFramework.CustomItems
 			//Handlers.PlayerEvents.ChangedItem -= PlayerEvents_ChangedItem;
 		}
 		
-		private void PlayerEvents_ChangedItem(LabApi.Events.Arguments.PlayerEvents.PlayerChangedItemEventArgs ev)
-		{
-			if (Check(ev.NewItem))
-				CustomHintService.AddTimedHint($"Switched to {Name}\n", 3, ev.Player);
-		}
-		
-		private void PlayerEvents_PickedUpItem(LabApi.Events.Arguments.PlayerEvents.PlayerPickedUpItemEventArgs ev)
-		{
-			if (Check(ev.Item))
-				CustomHintService.AddTimedHint($"Picked up {Name}\n", 3, ev.Player);
-		}
-
 		public virtual void PickedUp(Player player)
 		{
-			CustomHintService.AddTimedHint($"Picked up {Name}\n", 3, player);
+			var hint = new StaticHint(CustomTextService.Style.Default, $"Picked up {Name}", TimeSpan.FromSeconds(3));
+			CustomHintService.CustomHintService.RegisterHint(hint, player);
 		}
 
 		public virtual void ChangedToItem(Player player)
 		{
-			CustomHintService.AddTimedHint($"Switched to {Name}\n", 3, player);
+			var hint = new StaticHint(CustomTextService.Style.Default, $"Switched to {Name}", TimeSpan.FromSeconds(3));
+			CustomHintService.CustomHintService.RegisterHint(hint, player);
 		}
 
 		public virtual bool Check(Item item) => item != null && TrackedSerials.Contains(item.Serial);
@@ -78,7 +70,8 @@ namespace CustomFramework.CustomItems
 			var i = player.AddItem((ItemType)item);
 			if (!TrackedSerials.Contains(i.Serial))
 				TrackedSerials.Add(i.Serial);
-			CustomHintService.AddTimedHint($"Picked up {Name}", 3, player);
+			var hint = new StaticHint(CustomTextService.Style.Default, $"Picked up {Name}", TimeSpan.FromSeconds(3));
+			CustomHintService.CustomHintService.RegisterHint(hint, player);
 			Give(player, i);
 			return i;
 		}
