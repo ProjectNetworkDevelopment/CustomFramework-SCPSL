@@ -16,10 +16,7 @@ namespace CustomFramework
 		{
 			var deserializer = new DeserializerBuilder().Build();
 
-			var filePath = Path.Combine(PathManager.Configs.FullName, "Custom Framework", $"{Server.Port}.yml");
-			if (!Directory.Exists(Path.Combine(filePath, "../"))) {
-				Directory.CreateDirectory(Path.Combine(filePath, "../"));
-			}
+			var filePath = Path.Combine(PathManager.Configs.FullName, Server.Port.ToString(), "Custom Framework", "Database.yml");
 			if (!File.Exists(filePath))
 			{
 				Database = new DatabaseModel();
@@ -41,9 +38,7 @@ namespace CustomFramework
 		{
 			var serializer = new SerializerBuilder().Build();
 
-			var filePath = Path.Combine(PathManager.Configs.FullName, "Custom Framework", $"{Server.Port}.yml");
-			if (!Directory.Exists(Path.Combine(filePath, "../")))
-				Directory.CreateDirectory(Path.Combine(filePath, "../"));
+			var filePath = Path.Combine(PathManager.Configs.FullName, Server.Port.ToString(), "Custom Framework", "Database.yml");
 
 			Database.DisabledSubclasses = CustomSubclass.Disabled.Select(x => x.Identifier).ToList();
 

@@ -20,6 +20,9 @@ using CustomFramework.Features;
 using InventorySystem.Items.Usables.Scp330;
 using CustomFramework.EventArgs;
 using CustomFramework.Commands;
+using CustomFramework.CustomTeams;
+using CustomFramework.CustomHintService;
+using CustomFramework.CustomTextService;
 
 namespace CustomFramework
 {
@@ -28,7 +31,6 @@ namespace CustomFramework
         public static CustomFrameworkPlugin Instance;
         internal static List<ICoroutineObject> coroutineRoles { get; set; }
         internal static List<ICoroutineObject> coroutineItems { get; set; }
-        public static Dictionary<Player, string> PlayerSubclasses { get; set; } = new Dictionary<Player, string>();
 
         public static Random Random = new Random();
 
@@ -49,51 +51,10 @@ namespace CustomFramework
 
         public override Version RequiredApiVersion => new Version(1, 0, 0);
 
-        public CoroutineHandle coroutine { get; set; }
-        public IEnumerator<float> Coroutine()
+        public DynamicHint SubclassHint { get; } = new DynamicHint(new Style()
         {
-            if (Config.Debug)
-                Logger.Debug("CustomHintService coroutine started.");
-
-            while (true)
-            {
-                try
-                {
-                    foreach (var player in Player.List.ToList())
-                    {
-                        if (player == null) continue;
-
-                        var hint = GetPlayerHint(player);
-                        if (!string.IsNullOrEmpty(hint))
-                            player.SendHint(hint);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error($"[CustomFramework] Error in CustomHintService coroutine: {ex}");
-                }
-
-                yield return Timing.WaitForSeconds(1f);
-            }
-        }
-
-        public string GetPlayerHint(Player player)
-        {
-            var hint = GetSubclassHint(player);
-            foreach (var h in CustomHintService.hints)
-            {
-                var n = h.Invoke(player);
-                if (!string.IsNullOrEmpty(n))
-                    hint += n;
-            }
-            foreach (var h in CustomHintService.timedHints.ToList())
-            {
-                if (player != h.player) continue;
-                if ((DateTime.UtcNow - h.startTime).TotalSeconds >= h.seconds) CustomHintService.timedHints.Remove(h);
-                else hint += h.hint;
-            }
-            return hint;
-        }
+            Alignment = Alignment.Left,
+        }, GetSubclassHint);
 
         public static string GetSubclassHint(Player player)
         {
@@ -103,12 +64,12 @@ namespace CustomFramework
 
             if (player.IsAlive)
             {
-                if (PlayerSubclasses.ContainsKey(player))
-                    subclass = CustomSubclass.Get(PlayerSubclasses[player]);
+                if (CustomSubclass.PlayerSubclasses.ContainsKey(player))
+                    subclass = CustomSubclass.Get(CustomSubclass.PlayerSubclasses[player]);
             }
-            else if (player.CurrentlySpectating != null && PlayerSubclasses.ContainsKey(player.CurrentlySpectating))
+            else if (player.CurrentlySpectating != null && CustomSubclass.PlayerSubclasses.ContainsKey(player.CurrentlySpectating))
             {
-                subclass = CustomSubclass.Get(PlayerSubclasses[player.CurrentlySpectating]);
+                subclass = CustomSubclass.Get(CustomSubclass.PlayerSubclasses[player.CurrentlySpectating]);
             }
 
             if (subclass != null)
@@ -124,36 +85,35 @@ namespace CustomFramework
 
             DatabaseHandler.LoadDatabase();
 
-            coroutine = Timing.RunCoroutine(Coroutine());
 
             PlayerEvents.Joined += PlayerEvents_Joined;
-            PlayerEvents.ChangedRole += Spawned;
             PlayerEvents.GroupChanged += PlayerEvents_GroupChanged;
             PlayerEvents.ItemUsageEffectsApplying += PlayerEvents_ItemUsageEffectsApplying;
+			PlayerEvents.ChangedItem += PlayerEvents_ChangedItem;
+			PlayerEvents.PickedUpItem += PlayerEvents_PickedUpItem;
 
             ServerEvents.RoundStarted += RoundStarted;
             ServerEvents.RoundEnded += RoundEnded;
             ServerEvents.MapGenerated += ServerEvents_MapGenerated;
 			ServerEvents.RoundRestarted += ServerEvents_RoundRestarted;
 
-			ServerSpecificSettingsSync.DefinedSettings.AddItem(new SSKeybindSetting(0, "Subclass Ability", UnityEngine.KeyCode.Z, true, false, null, 255));
+			ServerSpecificSettingsSync.DefinedSettings = ServerSpecificSettingsSync.DefinedSettings.AddItem(new SSKeybindSetting(0, "Subclass Ability", UnityEngine.KeyCode.Z, true, false, null, 255)).ToArray();
             ServerSpecificSettingsSync.ServerOnSettingValueReceived += SettingValueReceived;
 
-            FpcServerPositionDistributor.RoleSyncEvent += FpcServerPositionDistributor_RoleSyncEvent;
-
+            CustomSubclass.SubscribeStaticEvents();
+            CustomTeam.SubscribeStaticEvents();
+            CustomHintService.CustomHintService.Init();
         }
 
 		public override void Disable()
         {
 			Patcher.UnpatchAll("PyroCycloneProjects.CustomFramework");
 
-            if (coroutine.IsRunning)
-                Timing.KillCoroutines(coroutine);
-
             PlayerEvents.Joined -= PlayerEvents_Joined;
-            PlayerEvents.ChangedRole -= Spawned;
             PlayerEvents.GroupChanged -= PlayerEvents_GroupChanged;
 			PlayerEvents.ItemUsageEffectsApplying -= PlayerEvents_ItemUsageEffectsApplying;
+			PlayerEvents.ChangedItem -= PlayerEvents_ChangedItem;
+			PlayerEvents.PickedUpItem -= PlayerEvents_PickedUpItem;
 
 			ServerEvents.RoundStarted -= RoundStarted;
             ServerEvents.RoundEnded -= RoundEnded;
@@ -162,7 +122,22 @@ namespace CustomFramework
 
 			ServerSpecificSettingsSync.ServerOnSettingValueReceived -= SettingValueReceived;
 
-			FpcServerPositionDistributor.RoleSyncEvent -= FpcServerPositionDistributor_RoleSyncEvent;
+            CustomSubclass.UnsubscribeStaticEvents();
+            CustomTeam.UnsubscribeStaticEvents();
+            CustomHintService.CustomHintService.DynamicHints.Clear();
+            CustomHintService.CustomHintService.StaticHints.Clear();
+		}
+
+		private void PlayerEvents_PickedUpItem(PlayerPickedUpItemEventArgs ev)
+		{
+            var item = CustomItem.Get(ev.Item);
+			item?.PickedUp(ev.Player);
+		}
+
+		private void PlayerEvents_ChangedItem(PlayerChangedItemEventArgs ev)
+		{
+            var item = CustomItem.Get(ev.NewItem);
+            item?.ChangedToItem(ev.Player);
 		}
 
 		// Event made by ThatGuy on the SCP:SL Discord
@@ -176,21 +151,6 @@ namespace CustomFramework
             }
         }
 
-        internal static Dictionary<uint, DisguisedPlayer> disguisedPlayers = new Dictionary<uint, DisguisedPlayer>();
-
-		private RoleTypeId FpcServerPositionDistributor_RoleSyncEvent(ReferenceHub source, ReferenceHub dest, RoleTypeId role, Mirror.NetworkWriter arg4)
-		{
-            if (disguisedPlayers.TryGetValue(source.netId, out DisguisedPlayer disguisedPlayer) &&
-                (disguisedPlayer.AffectedPlayers == null || disguisedPlayer.AffectedPlayers.Contains(Player.Get(dest))))
-            {
-                return disguisedPlayer.Disguise;
-            }
-
-			//arg4.WriteRoleSyncInfo()
-
-			return role;
-		}
-
 		private void PlayerEvents_GroupChanged(PlayerGroupChangedEventArgs ev)
 		{
             ServerSpecificSettingsSync.SendToPlayer(ev.Player.ReferenceHub, ServerSpecificSettingsSync.DefinedSettings);
@@ -198,9 +158,11 @@ namespace CustomFramework
 
 		private void PlayerEvents_Joined(PlayerJoinedEventArgs ev)
 		{
+            CustomHintService.CustomHintService.RegisterHint(SubclassHint, ev.Player);
+
             ServerSpecificSettingsSync.SendToPlayer(ev.Player.ReferenceHub, ServerSpecificSettingsSync.DefinedSettings);
             if (ExperimentalMode.IsEnabled)
-                ev.Player.SendBroadcast("Experimental Mode is enabled this round. Expect jankyness or OP things.", 10);
+                ev.Player.SendBroadcast("Experimental Mode is enabled this round. Expect jank.", 10);
 		}
 
 		private void ServerEvents_MapGenerated(MapGeneratedEventArgs ev)
@@ -217,9 +179,9 @@ namespace CustomFramework
                     try
                     {
                         var player = Player.Get(sender);
-                        if (PlayerSubclasses.ContainsKey(player))
+                        if (CustomSubclass.PlayerSubclasses.ContainsKey(player))
                         {
-                            var cs = CustomSubclass.Get(PlayerSubclasses[player]);
+                            var cs = CustomSubclass.Get(CustomSubclass.PlayerSubclasses[player]);
                             if (cs != null && cs.CanUseAbility(player))
                                 cs.OnAbility(player);
                         }
@@ -231,78 +193,6 @@ namespace CustomFramework
                 }
             }
         }
-
-        private void Spawned(PlayerChangedRoleEventArgs ev)
-        {
-            if (ev.NewRole.RoleTypeId == RoleTypeId.Spectator)
-            {
-                disguisedPlayers.Remove(ev.Player.ReferenceHub.netId);
-			}
-
-			if (!PlayerSubclasses.TryGetValue(ev.Player, out var cs))
-            {
-                PlayerSubclasses.Add(ev.Player, null);
-            }
-            else if (!string.IsNullOrEmpty(cs))
-            {
-                var subclass = CustomSubclass.Get(cs);
-                subclass?.RemoveSubclass(ev.Player);
-                PlayerSubclasses[ev.Player] = null;
-            }
-
-            List<CustomSubclass> roleList;
-            if (ev.ChangeReason == (RoleChangeReason)11)
-            {
-                roleList = CustomSubclass.Registered
-                    .Where(t => t.GetType().GetCustomAttributes<CustomSubclassAttribute>().Any(attr => attr.TeamString == ev.Player.CustomInfo) &&
-						!CustomSubclass.Disabled.Contains(t) &&
-						t.SpawnConditionsMet(ev.Player) &&
-						(
-							ev.Player.RoleBase.ServerSpawnReason != RoleChangeReason.Escaped ||
-							t.IsEscapeRole
-						)
-					)
-					.ToList();
-
-                ev.Player.CustomInfo = null;
-            }
-			else
-                roleList = CustomSubclass.Registered
-                    .Where(t => t.GetType().GetCustomAttributes<CustomSubclassAttribute>().Any(r => r.Team == ev.Player.Role) &&
-                        !CustomSubclass.Disabled.Contains(t) &&
-                        t.SpawnConditionsMet(ev.Player) &&
-                        (
-                            ev.Player.RoleBase.ServerSpawnReason != RoleChangeReason.Escaped ||
-                            t.IsEscapeRole
-                        )
-                    )
-                    .ToList();
-
-            if (roleList.Count > 0)
-            {
-                List<CustomSubclass> weightedRoles = new List<CustomSubclass>();
-
-                foreach (var role in roleList)
-                {
-                    for (int i = 0; i < (int)role.SpawnTickets; i++)
-                    {
-                        weightedRoles.Add(role);
-                    }
-                }
-
-                if (weightedRoles.Count > 0)
-                {
-                    CustomSubclass chosenRole = weightedRoles[Random.Next(weightedRoles.Count)];
-                    chosenRole.GiveSubclass(ev.Player, false);
-                }
-
-                Logger.Debug("Finished player spawned on Framework");
-            }
-            else
-            {
-                Logger.Debug($"No subclasses found for team: {ev.Player.Role}");
-			}
-		}
 
         private void RoundStarted()
         {
@@ -323,6 +213,8 @@ namespace CustomFramework
 
         private void RoundEnded(RoundEndedEventArgs ev)
         {
+            // Change to only clear coroutines on disable.
+            // Run coroutines on registration.
             foreach (var coroutineRole in coroutineRoles)
                 if (coroutineRole.coroutine != null && coroutineRole.coroutine.IsRunning)
                     Timing.KillCoroutines(coroutineRole.coroutine);
@@ -333,12 +225,14 @@ namespace CustomFramework
 
 		private void ServerEvents_RoundRestarted()
 		{
-			disguisedPlayers.Clear();
+			CustomSubclass.DisguisedPlayers.Clear();
             ExperimentalMode.IsEnabled = false;
 		}
 
         public static void RegisterAll()
         {
+            // Replace with a method to register each class set.
+
             Logger.Debug("Registering all custom subclasses.");
 
             Assembly assembly = Assembly.GetCallingAssembly();
@@ -382,7 +276,8 @@ namespace CustomFramework
 
         public static void UnregisterAll()
         {
-            foreach (CustomSubclass subclass in CustomSubclass.Registered) subclass.TryUnregister();
+			// Replace with a method to register each class set.
+			foreach (CustomSubclass subclass in CustomSubclass.Registered) subclass.TryUnregister();
             foreach (CustomItem item in CustomItem.Registered) item.TryUnregister();
         }
     }

@@ -26,10 +26,10 @@ namespace CustomFramework.Patches
 			newInstructions.InsertRange(index, new List<CodeInstruction>()
 			{
 				new CodeInstruction(OpCodes.Ldarg_0),
-				new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(FpcStateProcessor), nameof(FpcStateProcessor._stat))),
+				new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(FpcStateProcessor), "_stat")),
 				new CodeInstruction(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(StatBase), nameof(StatBase.MinValue))),
 				new CodeInstruction(OpCodes.Ldarg_0),
-				new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(FpcStateProcessor), nameof(FpcStateProcessor._stat))),
+				new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(FpcStateProcessor), "_stat")),
 				new CodeInstruction(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(StatBase), nameof(StatBase.MaxValue))),
 				new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Mathf), nameof(Mathf.Clamp), new System.Type[3]{ typeof(float), typeof(float), typeof(float) })),
 			});
@@ -41,7 +41,7 @@ namespace CustomFramework.Patches
 			newInstructions.InsertRange(index, new List<CodeInstruction>()
 			{
 				new CodeInstruction(OpCodes.Ldarg_0),
-				new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(FpcStateProcessor), nameof(FpcStateProcessor._stat))),
+				new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(FpcStateProcessor), "_stat")),
 				new CodeInstruction(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(StatBase), nameof(StatBase.MaxValue))),
 			});
 
@@ -52,10 +52,10 @@ namespace CustomFramework.Patches
 			newInstructions.InsertRange(index, new List<CodeInstruction>()
 			{
 				new CodeInstruction(OpCodes.Ldarg_0),
-				new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(FpcStateProcessor), nameof(FpcStateProcessor._stat))),
+				new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(FpcStateProcessor), "_stat")),
 				new CodeInstruction(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(StatBase), nameof(StatBase.MinValue))),
 				new CodeInstruction(OpCodes.Ldarg_0),
-				new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(FpcStateProcessor), nameof(FpcStateProcessor._stat))),
+				new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(FpcStateProcessor), "_stat")),
 				new CodeInstruction(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(StatBase), nameof(StatBase.MaxValue))),
 				new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Mathf), nameof(Mathf.Clamp), new System.Type[3] { typeof(float), typeof(float), typeof(float) })),
 			});

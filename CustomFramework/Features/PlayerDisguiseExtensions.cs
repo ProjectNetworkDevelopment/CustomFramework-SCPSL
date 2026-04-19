@@ -1,4 +1,5 @@
-﻿using LabApi.Features.Wrappers;
+﻿using CustomFramework.CustomSubclasses;
+using LabApi.Features.Wrappers;
 using PlayerRoles;
 using System.Collections.Generic;
 
@@ -10,15 +11,15 @@ namespace CustomFramework.Features
 		{
 			if (disguiseRole == null)
 			{
-				if (CustomFrameworkPlugin.disguisedPlayers.ContainsKey(player.ReferenceHub.netId))
-					CustomFrameworkPlugin.disguisedPlayers.Remove(player.ReferenceHub.netId);
+				if (CustomSubclass.DisguisedPlayers.ContainsKey(player.ReferenceHub.netId))
+					CustomSubclass.DisguisedPlayers.Remove(player.ReferenceHub.netId);
 				return;
 			}
 
 			List<Player> playerList;
 			if (affectedPlayers == null)
 			{
-				playerList = new List<Player>();
+				playerList = null;
 			}
 			else
 			{
@@ -29,7 +30,7 @@ namespace CustomFramework.Features
 				Disguise = (RoleTypeId)disguiseRole,
 				AffectedPlayers = playerList
 			};
-			CustomFrameworkPlugin.disguisedPlayers.Add(player.ReferenceHub.netId, d);
+			CustomSubclass.DisguisedPlayers.Add(player.ReferenceHub.netId, d);
 		}
 	}
 }
