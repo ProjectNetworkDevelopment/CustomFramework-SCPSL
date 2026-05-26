@@ -9,6 +9,7 @@ using PlayerRoles.FirstPersonControl.NetworkMessages;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Remoting.Messaging;
 using UnityEngine;
 using VoiceChat;
 using Logger = LabApi.Features.Console.Logger;
@@ -20,22 +21,23 @@ namespace CustomFramework.CustomSubclasses
         public static HashSet<CustomSubclass> Registered = new HashSet<CustomSubclass>();
 
         public static HashSet<CustomSubclass> Disabled = new HashSet<CustomSubclass>();
-		public static Dictionary<Player, string> PlayerSubclasses { get; set; } = new Dictionary<Player, string>();
+		public static Dictionary<Player, CustomSubclass> PlayerSubclasses { get; set; } = new Dictionary<Player, CustomSubclass>();
 		public static Dictionary<uint, DisguisedPlayer> DisguisedPlayers { get; set; } = new Dictionary<uint, DisguisedPlayer>();
 
 		public static System.Random Random = CustomFrameworkPlugin.Random;
-
+        
 		internal static void SubscribeStaticEvents()
         {
 			PlayerEvents.ChangedRole += PlayerEvents_ChangedRole;
+            PlayerEvents.ChangingRole += PlayerEvents_ChangingRole;
 
             FpcServerPositionDistributor.RoleSyncEvent += FpcServerPositionDistributor_RoleSyncEvent;
-
 		}
 
-        internal static void UnsubscribeStaticEvents()
+		internal static void UnsubscribeStaticEvents()
         {
             PlayerEvents.ChangedRole -= PlayerEvents_ChangedRole;
+			PlayerEvents.ChangingRole -= PlayerEvents_ChangingRole;
 
 			FpcServerPositionDistributor.RoleSyncEvent -= FpcServerPositionDistributor_RoleSyncEvent;
 		}
@@ -51,45 +53,41 @@ namespace CustomFramework.CustomSubclasses
 			return role;
 		}
 
-		private static void PlayerEvents_ChangedRole(PlayerChangedRoleEventArgs ev)
-		{
-            if (ev.ChangeReason == (RoleChangeReason)12) return;
-			if (ev.NewRole.RoleTypeId == RoleTypeId.Spectator)
+        private static void PlayerEvents_ChangingRole(PlayerChangingRoleEventArgs ev)
+        {
+            if (ev.NewRole == RoleTypeId.Spectator)
 			{
 				DisguisedPlayers.Remove(ev.Player.ReferenceHub.netId);
 			}
+        }
 
-			if (!PlayerSubclasses.TryGetValue(ev.Player, out var cs))
-			{
-				PlayerSubclasses.Add(ev.Player, null);
-			}
-			else if (!string.IsNullOrEmpty(cs))
-			{
-				var subclass = CustomSubclass.Get(cs);
-				subclass?.RemoveSubclass(ev.Player);
-				PlayerSubclasses[ev.Player] = null;
-			}
-
-			List<CustomSubclass> roleList;
+		private static void PlayerEvents_ChangedRole(PlayerChangedRoleEventArgs ev)
+		{
+            if (ev.ChangeReason == (RoleChangeReason)12) return;
+			
+            List<CustomSubclass> roleList;
+            Logger.Debug("Checkpoint 1");
 			if (ev.ChangeReason == (RoleChangeReason)11)
 			{
-				roleList = Registered
-					.Where(t => t.GetType().GetCustomAttributes<CustomSubclassAttribute>().Any(attr => attr.TeamString == ev.Player.CustomInfo) &&
-						!Disabled.Contains(t) &&
-						t.SpawnConditionsMet(ev.Player) &&
-						(
-							ev.Player.RoleBase.ServerSpawnReason != RoleChangeReason.Escaped ||
-							t.IsEscapeRole
-						)
-					)
+                roleList = Registered
+                    .Where(t => t.GetType().GetCustomAttributes<CustomSubclassAttribute>().Any(attr => attr.TeamString == ev.Player.CustomInfo) &&
+                        !Disabled.Contains(t) &&
+                        t.SpawnTickets != 0 &&
+                        t.SpawnConditionsMet(ev.Player) &&
+                        (
+                            ev.Player.RoleBase.ServerSpawnReason != RoleChangeReason.Escaped ||
+                            t.IsEscapeRole
+                        )
+                    )
 					.ToList();
-
+                Logger.Debug("Checkpoint 1:1");
 				ev.Player.CustomInfo = null;
 			}
 			else
 				roleList = Registered
 					.Where(t => t.GetType().GetCustomAttributes<CustomSubclassAttribute>().Any(r => r.Team == ev.Player.Role) &&
 						!Disabled.Contains(t) &&
+                        t.SpawnTickets != 0 &&
 						t.SpawnConditionsMet(ev.Player) &&
 						(
 							ev.Player.RoleBase.ServerSpawnReason != RoleChangeReason.Escaped ||
@@ -97,6 +95,8 @@ namespace CustomFramework.CustomSubclasses
 						)
 					)
 					.ToList();
+
+            Logger.Debug("Checkpoint 2");
 
 			if (roleList.Count > 0)
 			{
@@ -110,16 +110,46 @@ namespace CustomFramework.CustomSubclasses
 					}
 				}
 
+                Logger.Debug("Checkpoint 2:1");
+
 				if (weightedRoles.Count > 0)
 				{
 					CustomSubclass chosenRole = weightedRoles[Random.Next(weightedRoles.Count)];
+
+					if (!PlayerSubclasses.TryGetValue(ev.Player, out var cs))
+					{
+                        Logger.Debug("Checkpoint 2:6");
+						PlayerSubclasses.Add(ev.Player, null);
+                        Logger.Debug("Checkpoint 2:7");
+					}
+					else
+					{
+                        Logger.Debug("Checkpoint 2:8");
+                        chosenRole = cs?.OnChangingSubclass(ev.ChangeReason, chosenRole) ?? chosenRole;
+                        Logger.Debug("Checkpoint 2:9");
+						cs?.RemoveSubclass(ev.Player);
+                        Logger.Debug("Checkpoint 2:10");
+					}
 					chosenRole.GiveSubclass(ev.Player, false);
+                    Logger.Debug("Checkpoint 2:11");
 				}
 
 				Logger.Debug("Finished player spawned on Framework");
 			}
 			else
 			{
+				if (!PlayerSubclasses.TryGetValue(ev.Player, out var cs))
+				{
+                    Logger.Debug("Checkpoint 2:2");
+					PlayerSubclasses.Add(ev.Player, null);
+                    Logger.Debug("Checkpoint 2:3");
+				}
+				else
+				{
+                    Logger.Debug("Checkpoint 2:4");
+					cs?.RemoveSubclass(ev.Player);
+                    Logger.Debug("Checkpoint 2:5");
+				}
 				Logger.Debug($"No subclasses found for team: {ev.Player.Role}");
 			}
 		}
@@ -157,9 +187,8 @@ namespace CustomFramework.CustomSubclasses
 
 		public virtual void SubscribeEvents() { }
         public virtual void UnsubscribeEvents() { }
-        public virtual void OnAbility(Player player) {
-            RunDuration(player);
-        }
+        public virtual void OnAbility(Player player) => RunDuration(player);
+        public virtual CustomSubclass OnChangingSubclass(RoleChangeReason reason, CustomSubclass subclass) => subclass;
 
         protected virtual void OnAbilityEnd(Player player) { }
         protected virtual void OnCooldownEnd(Player player) { }
@@ -178,7 +207,7 @@ namespace CustomFramework.CustomSubclasses
 
             TrackedPlayers.Add(player);
             player.CustomInfo = CustomInfo;
-            PlayerSubclasses[player] = Identifier;
+            PlayerSubclasses[player] = this;
             //PriorScale = player.ReferenceHub.transform.localScale;
             //player.ReferenceHub.transform.localScale = Vector3.Scale(player.ReferenceHub.transform.localScale, Scale);
             player.SetScale(Scale);
@@ -198,7 +227,7 @@ namespace CustomFramework.CustomSubclasses
             if (TrackedPlayers.Contains(player))
                 TrackedPlayers.Remove(player);
             player.CustomInfo = "";
-            PlayerSubclasses[player] = "";
+            PlayerSubclasses[player] = null;
             player.ReferenceHub.transform.localScale = Vector3.one;
 
             if (this is IAbilityDuration duration)
