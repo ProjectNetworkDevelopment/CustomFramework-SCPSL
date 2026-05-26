@@ -1,4 +1,6 @@
-﻿using LabApi.Features.Wrappers;
+﻿using CustomFramework.Interfaces;
+using LabApi.Features.Wrappers;
+using MEC;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -20,6 +22,7 @@ namespace CustomFramework.CustomHintService
 
 		public static async Task Coroutine()
 		{
+
 			Logger.Debug("CustomHintService coroutine started.", CustomFrameworkPlugin.Instance.Config.Debug);
 
 			while (true)
@@ -28,11 +31,12 @@ namespace CustomFramework.CustomHintService
 				{
 					foreach (var player in Player.ReadyList.ToList())
 					{
-						if (player == null) return;
+						if (player == null) continue;
 
 						var hint = GetPlayerHint(player);
-						if (!string.IsNullOrEmpty(hint))
-							player.SendHint(hint);
+						if (string.IsNullOrEmpty(hint)) continue;
+
+						MainThreadDispatcher.Dispatch(() => player.SendHint(hint));
 					}
 				}
 				catch (Exception ex)
@@ -56,7 +60,7 @@ namespace CustomFramework.CustomHintService
 				{
 					if (h == null) continue;
 					h.Update(player);
-					var hi = h.hints[player];
+					if (!h.hints.TryGetValue(player, out var hi)) continue;
 					if (h.Style.Alignment == CustomTextService.Alignment.Left) leftHints.Add(hi);
 					else if (h.Style.Alignment == CustomTextService.Alignment.Center) centerHints.Add(hi);
 					else if (h.Style.Alignment == CustomTextService.Alignment.Right) rightHints.Add(hi);

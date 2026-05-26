@@ -21,9 +21,9 @@ namespace CustomFramework.Commands
             response = "";
 
             if (player.IsAlive)
-                role = CustomSubclass.Get(CustomSubclass.PlayerSubclasses[player]);
+                role = CustomSubclass.PlayerSubclasses[player];
             else
-                role = CustomSubclass.Get(CustomSubclass.PlayerSubclasses[player.CurrentlySpectating]);
+                role = CustomSubclass.PlayerSubclasses[player.CurrentlySpectating];
 
             if (role != null)
             {

@@ -1,28 +1,29 @@
-using System;
-using System.Reflection;
-using UserSettings.ServerSpecific;
+using CustomFramework.Commands;
+using CustomFramework.CustomHintService;
+using CustomFramework.CustomItems;
 using CustomFramework.CustomSubclasses;
-using MEC;
-using System.Collections.Generic;
+using CustomFramework.CustomTeams;
+using CustomFramework.CustomTextService;
+using CustomFramework.EventArgs;
+using CustomFramework.Features;
 using CustomFramework.Interfaces;
-using System.Linq;
-using LabApi.Loader.Features.Plugins;
-using LabApi.Features.Wrappers;
+using HarmonyLib;
+using InventorySystem.Items.Usables.Scp330;
 using LabApi.Events.Arguments.PlayerEvents;
 using LabApi.Events.Arguments.ServerEvents;
-using LabApi.Features.Console;
-using HarmonyLib;
-using CustomFramework.CustomItems;
 using LabApi.Events.Handlers;
+using LabApi.Features.Console;
+using LabApi.Features.Wrappers;
+using LabApi.Loader.Features.Plugins;
+using MEC;
+using Mirror;
 using PlayerRoles;
 using PlayerRoles.FirstPersonControl.NetworkMessages;
-using CustomFramework.Features;
-using InventorySystem.Items.Usables.Scp330;
-using CustomFramework.EventArgs;
-using CustomFramework.Commands;
-using CustomFramework.CustomTeams;
-using CustomFramework.CustomHintService;
-using CustomFramework.CustomTextService;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using UserSettings.ServerSpecific;
 
 namespace CustomFramework
 {
@@ -63,7 +64,8 @@ namespace CustomFramework
 
         public static string GetSubclassSideHint(Player player)
         {
-            return PlayerSubclassHints[player];
+            if (!PlayerSubclassHints.TryGetValue(player, out var result)) return null;
+            return result;
         }
 
         public static string GetSubclassHint(Player player)
@@ -75,11 +77,11 @@ namespace CustomFramework
             if (player.IsAlive)
             {
                 if (CustomSubclass.PlayerSubclasses.ContainsKey(player))
-                    subclass = CustomSubclass.Get(CustomSubclass.PlayerSubclasses[player]);
+                    subclass = CustomSubclass.PlayerSubclasses[player];
             }
             else if (player.CurrentlySpectating != null && CustomSubclass.PlayerSubclasses.ContainsKey(player.CurrentlySpectating))
             {
-                subclass = CustomSubclass.Get(CustomSubclass.PlayerSubclasses[player.CurrentlySpectating]);
+                subclass = CustomSubclass.PlayerSubclasses[player.CurrentlySpectating];
             }
 
             if (subclass != null)
@@ -93,30 +95,29 @@ namespace CustomFramework
 
         public override void Enable()
         {
-            Logger.Debug("Custom Framework patching");
+			Logger.Debug("Custom Framework patching");
             Patcher.PatchAll();
             Logger.Debug("Custom Framework finished patching");
 
-            DatabaseHandler.LoadDatabase();
-
+			DatabaseHandler.LoadDatabase();
 
             PlayerEvents.Joined += PlayerEvents_Joined;
             PlayerEvents.GroupChanged += PlayerEvents_GroupChanged;
             PlayerEvents.ItemUsageEffectsApplying += PlayerEvents_ItemUsageEffectsApplying;
-			PlayerEvents.ChangedItem += PlayerEvents_ChangedItem;
-			PlayerEvents.PickedUpItem += PlayerEvents_PickedUpItem;
+            PlayerEvents.ChangedItem += PlayerEvents_ChangedItem;
+            PlayerEvents.PickedUpItem += PlayerEvents_PickedUpItem;
 
             ServerEvents.RoundStarted += RoundStarted;
             ServerEvents.RoundEnded += RoundEnded;
             ServerEvents.MapGenerated += ServerEvents_MapGenerated;
-			ServerEvents.RoundRestarted += ServerEvents_RoundRestarted;
+            ServerEvents.RoundRestarted += ServerEvents_RoundRestarted;
 
-			ServerSpecificSettingsSync.DefinedSettings = ServerSpecificSettingsSync.DefinedSettings.AddItem(new SSKeybindSetting(0, "Subclass Ability", UnityEngine.KeyCode.Z, true, false, null, 255)).ToArray();
             ServerSpecificSettingsSync.ServerOnSettingValueReceived += SettingValueReceived;
+            ServerSpecificSettingsSync.DefinedSettings = ServerSpecificSettingsSync.DefinedSettings.AddItem(new SSKeybindSetting(0, "Subclass Ability", UnityEngine.KeyCode.Z, true, false, null, 255)).ToArray();
 
             CustomSubclass.SubscribeStaticEvents();
             CustomTeam.SubscribeStaticEvents();
-            CustomHintService.CustomHintService.Init();
+			CustomHintService.CustomHintService.Init();
         }
 
 		public override void Disable()
@@ -125,16 +126,16 @@ namespace CustomFramework
 
             PlayerEvents.Joined -= PlayerEvents_Joined;
             PlayerEvents.GroupChanged -= PlayerEvents_GroupChanged;
-			PlayerEvents.ItemUsageEffectsApplying -= PlayerEvents_ItemUsageEffectsApplying;
-			PlayerEvents.ChangedItem -= PlayerEvents_ChangedItem;
-			PlayerEvents.PickedUpItem -= PlayerEvents_PickedUpItem;
+            PlayerEvents.ItemUsageEffectsApplying -= PlayerEvents_ItemUsageEffectsApplying;
+            PlayerEvents.ChangedItem -= PlayerEvents_ChangedItem;
+            PlayerEvents.PickedUpItem -= PlayerEvents_PickedUpItem;
 
-			ServerEvents.RoundStarted -= RoundStarted;
+            ServerEvents.RoundStarted -= RoundStarted;
             ServerEvents.RoundEnded -= RoundEnded;
             ServerEvents.MapGenerated -= ServerEvents_MapGenerated;
             ServerEvents.RoundRestarted -= ServerEvents_RoundRestarted;
 
-			ServerSpecificSettingsSync.ServerOnSettingValueReceived -= SettingValueReceived;
+            ServerSpecificSettingsSync.ServerOnSettingValueReceived -= SettingValueReceived;
 
             CustomSubclass.UnsubscribeStaticEvents();
             CustomTeam.UnsubscribeStaticEvents();
@@ -196,7 +197,7 @@ namespace CustomFramework
                         var player = Player.Get(sender);
                         if (CustomSubclass.PlayerSubclasses.ContainsKey(player))
                         {
-                            var cs = CustomSubclass.Get(CustomSubclass.PlayerSubclasses[player]);
+                            var cs = CustomSubclass.PlayerSubclasses[player];
                             if (cs != null && cs.CanUseAbility(player))
                                 cs.OnAbility(player);
                         }
