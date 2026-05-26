@@ -55,6 +55,16 @@ namespace CustomFramework
         {
             Alignment = Alignment.Left,
         }, GetSubclassHint);
+        public DynamicHint SubclassSideHint { get; } = new DynamicHint(new Style()
+        {
+            Alignment = Alignment.Right,
+        }, GetSubclassSideHint);
+        public static Dictionary<Player, string> PlayerSubclassHints { get; } = new Dictionary<Player, string>();
+
+        public static string GetSubclassSideHint(Player player)
+        {
+            return PlayerSubclassHints[player];
+        }
 
         public static string GetSubclassHint(Player player)
         {
@@ -73,7 +83,11 @@ namespace CustomFramework
             }
 
             if (subclass != null)
-                return $"<align=left><size=20>{subclass?.Name}\nUse .roleinfo for information\nabout this role.</size></align><align=right>{subclass?.GetSpecificHint(player)}</align>";
+            {
+                PlayerSubclassHints[player] = subclass?.GetSpecificHint(player);
+
+                return $"{subclass?.Name}\nUse .roleinfo for information\nabout this role.";
+            }
             return string.Empty;
         }
 
@@ -159,6 +173,7 @@ namespace CustomFramework
 		private void PlayerEvents_Joined(PlayerJoinedEventArgs ev)
 		{
             CustomHintService.CustomHintService.RegisterHint(SubclassHint, ev.Player);
+            CustomHintService.CustomHintService.RegisterHint(SubclassSideHint, ev.Player);
 
             ServerSpecificSettingsSync.SendToPlayer(ev.Player.ReferenceHub, ServerSpecificSettingsSync.DefinedSettings);
             if (ExperimentalMode.IsEnabled)

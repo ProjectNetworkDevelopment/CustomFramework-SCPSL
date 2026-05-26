@@ -1,6 +1,4 @@
-﻿using CustomFramework.Interfaces;
-using LabApi.Features.Wrappers;
-using MEC;
+﻿using LabApi.Features.Wrappers;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -56,6 +54,7 @@ namespace CustomFramework.CustomHintService
 			if (DynamicHints.TryGetValue(player, out var dynamiclist))
 				foreach (var h in dynamiclist.ToList())
 				{
+					if (h == null) continue;
 					h.Update(player);
 					var hi = h.hints[player];
 					if (h.Style.Alignment == CustomTextService.Alignment.Left) leftHints.Add(hi);
@@ -65,6 +64,15 @@ namespace CustomFramework.CustomHintService
 			if (StaticHints.TryGetValue(player, out var staticlist))
 				foreach (var h in staticlist.ToList())
 				{
+					if (h == null) continue;
+
+					if (h.Expiration != null && (DateTime.UtcNow - h.StartTime) > h.Expiration)
+					{
+						h.Hint = null;
+					}
+
+					if (h.Hint == null) continue;
+
 					if (h.Style.Alignment == CustomTextService.Alignment.Left) leftHints.Add(h.Hint);
 					else if (h.Style.Alignment == CustomTextService.Alignment.Center) centerHints.Add(h.Hint);
  					else if (h.Style.Alignment == CustomTextService.Alignment.Right) rightHints.Add(h.Hint);
@@ -78,6 +86,7 @@ namespace CustomFramework.CustomHintService
 			return hint;
 		}
 
+		public static List<StaticHint> Statics { get; set; } = new List<StaticHint>();
 		public static ConcurrentDictionary<Player, List<DynamicHint>> DynamicHints { get; set; } = new ConcurrentDictionary<Player, List<DynamicHint>>();
 		public static ConcurrentDictionary<Player, List<StaticHint>> StaticHints { get; set; } = new ConcurrentDictionary<Player, List<StaticHint>>();
 
@@ -105,6 +114,7 @@ namespace CustomFramework.CustomHintService
 				val.Add(hint);
 			}
 
+			Statics.Add(hint);
 			StaticHints.TryAdd(player, new List<StaticHint>() { hint });
 		}
 	}

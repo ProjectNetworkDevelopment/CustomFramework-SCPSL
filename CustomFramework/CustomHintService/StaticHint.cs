@@ -15,7 +15,7 @@ namespace CustomFramework.CustomHintService
 
 		public Style Style { get; set; }
 		public string Hint { get; set; }
-		private DateTime StartTime { get; set; }
+		internal DateTime StartTime { get; set; }
 		public TimeSpan? Expiration { get; set; }
 	}
 }
