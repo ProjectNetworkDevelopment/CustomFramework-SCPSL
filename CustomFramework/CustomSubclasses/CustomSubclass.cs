@@ -66,7 +66,6 @@ namespace CustomFramework.CustomSubclasses
             if (ev.ChangeReason == (RoleChangeReason)12) return;
 			
             List<CustomSubclass> roleList;
-            Logger.Debug("Checkpoint 1");
 			if (ev.ChangeReason == (RoleChangeReason)11)
 			{
                 roleList = Registered
@@ -80,7 +79,7 @@ namespace CustomFramework.CustomSubclasses
                         )
                     )
 					.ToList();
-                Logger.Debug("Checkpoint 1:1");
+
 				ev.Player.CustomInfo = null;
 			}
 			else
@@ -96,8 +95,6 @@ namespace CustomFramework.CustomSubclasses
 					)
 					.ToList();
 
-            Logger.Debug("Checkpoint 2");
-
 			if (roleList.Count > 0)
 			{
 				List<CustomSubclass> weightedRoles = new List<CustomSubclass>();
@@ -110,28 +107,20 @@ namespace CustomFramework.CustomSubclasses
 					}
 				}
 
-                Logger.Debug("Checkpoint 2:1");
-
 				if (weightedRoles.Count > 0)
 				{
 					CustomSubclass chosenRole = weightedRoles[Random.Next(weightedRoles.Count)];
 
 					if (!PlayerSubclasses.TryGetValue(ev.Player, out var cs))
 					{
-                        Logger.Debug("Checkpoint 2:6");
 						PlayerSubclasses.Add(ev.Player, null);
-                        Logger.Debug("Checkpoint 2:7");
 					}
 					else
 					{
-                        Logger.Debug("Checkpoint 2:8");
                         chosenRole = cs?.OnChangingSubclass(ev.ChangeReason, chosenRole) ?? chosenRole;
-                        Logger.Debug("Checkpoint 2:9");
 						cs?.RemoveSubclass(ev.Player);
-                        Logger.Debug("Checkpoint 2:10");
 					}
 					chosenRole.GiveSubclass(ev.Player, false);
-                    Logger.Debug("Checkpoint 2:11");
 				}
 
 				Logger.Debug("Finished player spawned on Framework");
@@ -140,15 +129,11 @@ namespace CustomFramework.CustomSubclasses
 			{
 				if (!PlayerSubclasses.TryGetValue(ev.Player, out var cs))
 				{
-                    Logger.Debug("Checkpoint 2:2");
 					PlayerSubclasses.Add(ev.Player, null);
-                    Logger.Debug("Checkpoint 2:3");
 				}
 				else
 				{
-                    Logger.Debug("Checkpoint 2:4");
 					cs?.RemoveSubclass(ev.Player);
-                    Logger.Debug("Checkpoint 2:5");
 				}
 				Logger.Debug($"No subclasses found for team: {ev.Player.Role}");
 			}
