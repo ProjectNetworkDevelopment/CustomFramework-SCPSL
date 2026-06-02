@@ -1,5 +1,6 @@
 ﻿using Cassie;
 using CustomFramework.CustomSubclasses;
+using CustomFramework.Interfaces;
 using LabApi.Events.Arguments.ServerEvents;
 using LabApi.Events.Handlers;
 using LabApi.Features.Wrappers;
@@ -19,23 +20,33 @@ namespace CustomFramework.CustomTeams
 		public static Dictionary<Player, string> PlayerTeams { get; set; } = new Dictionary<Player, string>();
 		public static System.Random Random = CustomFrameworkPlugin.Random;
 
-		public abstract int Id { get; set; }
-		public abstract string Identifier { get; set; }
-		public abstract string Name { get; set; }
-		public abstract float SpawnTickets { get; set; }
-		public virtual CassieTtsPayload? CassieAnnouncement { get; set; } = null;
-		public virtual bool SpawnCustomRoles { get; set; } = false;
-
-		public int Tokens { get; set; } = 1;
-
 		internal static void SubscribeStaticEvents()
 		{
-			//ServerEvents.WaveRespawning += ServerEvents_WaveRespawning;
+			ServerEvents.WaveRespawning += ServerEvents_WaveRespawning;
+
+			PlayerEvents.ChangedRole += PlayerEvents_ChangedRole;
 		}
 
 		internal static void UnsubscribeStaticEvents()
 		{
-			//ServerEvents.WaveRespawning -= ServerEvents_WaveRespawning;
+			ServerEvents.WaveRespawning -= ServerEvents_WaveRespawning;
+
+			PlayerEvents.ChangedRole -= PlayerEvents_ChangedRole;
+		}
+
+		private static void PlayerEvents_ChangedRole(LabApi.Events.Arguments.PlayerEvents.PlayerChangedRoleEventArgs ev)
+		{
+			if (!ev.Player.IsAlive)
+			{
+				if (PlayerTeams.ContainsKey(ev.Player))
+					PlayerTeams.Remove(ev.Player);
+			}
+			else
+			{
+				if (PlayerTeams.ContainsKey(ev.Player)) return;
+
+				PlayerTeams[ev.Player] = ev.Player.Faction.ToString();
+			}
 		}
 
 		private static void ServerEvents_WaveRespawning(WaveRespawningEventArgs ev)
@@ -52,8 +63,9 @@ namespace CustomFramework.CustomTeams
 			//}
 
 			// Future idea: Make this chance based, with a config for the chance.
-			var spawnTeam = true;
+			var spawnTeam = CustomFrameworkPlugin.Random.NextDouble() > CustomFrameworkPlugin.Instance.Config.CustomTeamReplaceChance;
 			if (!spawnTeam) return;
+
 			ev.IsAllowed = false;
 
 			List<CustomTeam> teamList = Registered
@@ -78,17 +90,27 @@ namespace CustomFramework.CustomTeams
 				{
 					CustomTeam team = weightedRoles[Random.Next(weightedRoles.Count)];
 					team.SpawnWave(ev.Roles, ev.Wave is MiniMtfWave || ev.Wave is MiniChaosWave);
-					//CustomSubclass chosenRole = weightedRoles[Random.Next(weightedRoles.Count)];
-					//chosenRole.GiveSubclass(ev.Player, false);
 				}
 
 				Logger.Debug("Finished player spawned on Framework");
 			}
 			else
 			{
-				//Logger.Debug($"No subclasses found for team: {ev.Player.Role}");
+				Logger.Debug($"No custom found for team: {ev.Wave}");
 			}
 		}
+
+		public abstract int Id { get; set; }
+		public abstract string Identifier { get; set; }
+		public abstract string Name { get; set; }
+		public abstract float SpawnTickets { get; set; }
+		public virtual CassieTtsPayload? CassieAnnouncement { get; set; } = null;
+		public virtual bool SpawnCustomRoles { get; set; } = false;
+
+		public int Tokens { get; set; } = 1;
+
+		public virtual void SubscribeEvents() { }
+		public virtual void UnsubscribeEvents() { }
 
 		public virtual bool SpawnConditionsMet()
 		{
@@ -101,13 +123,54 @@ namespace CustomFramework.CustomTeams
 			Tokens -= 1;
 			foreach (var player in players)
 			{
+				PlayerTeams[player.Key] = Identifier;
 				if (SpawnCustomRoles)
-					player.Key.SetRole(player.Value, Name);
+					player.Key.SetRole(player.Value, Identifier);
 				else if (IsBackupWave)
 					player.Key.SetRole(player.Value, reason: RoleChangeReason.RespawnMiniwave);
 				else
 					player.Key.SetRole(player.Value, reason: RoleChangeReason.Respawn);
 			}
+		}
+
+		public virtual void Init()
+		{
+			if (this is IAbilityDuration duration)
+				duration.ActiveAbilities = new HashSet<Player>();
+			if (this is IAbilityCooldown cooldown)
+				cooldown.ActiveCooldowns = new HashSet<Player>();
+
+			SubscribeEvents();
+		}
+
+		public virtual void Destroy()
+		{
+			UnsubscribeEvents();
+		}
+
+		internal bool TryRegister()
+		{
+			if (!Registered.Contains(this))
+			{
+				if (Registered.Any(r => r.Identifier == Identifier || r.Id == Id))
+				{
+					Logger.Warn($"{Identifier} was already registered.");
+					return false;
+				}
+
+				Registered.Add(this);
+				Init();
+				return true;
+			}
+
+			Logger.Warn($"Couldn't register {Name} ({Identifier})");
+			return false;
+		}
+
+		internal bool TryUnregister()
+		{
+			Destroy();
+			return Registered.Remove(this);
 		}
 	}
 }
