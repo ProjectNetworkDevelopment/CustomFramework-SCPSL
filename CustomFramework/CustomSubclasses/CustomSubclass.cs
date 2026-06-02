@@ -9,7 +9,6 @@ using PlayerRoles.FirstPersonControl.NetworkMessages;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.Remoting.Messaging;
 using UnityEngine;
 using VoiceChat;
 using Logger = LabApi.Features.Console.Logger;
@@ -28,16 +27,16 @@ namespace CustomFramework.CustomSubclasses
         
 		internal static void SubscribeStaticEvents()
         {
-			PlayerEvents.ChangedRole += PlayerEvents_ChangedRole;
             PlayerEvents.ChangingRole += PlayerEvents_ChangingRole;
+			PlayerEvents.ChangedRole += PlayerEvents_ChangedRole;
 
             FpcServerPositionDistributor.RoleSyncEvent += FpcServerPositionDistributor_RoleSyncEvent;
 		}
 
 		internal static void UnsubscribeStaticEvents()
         {
-            PlayerEvents.ChangedRole -= PlayerEvents_ChangedRole;
 			PlayerEvents.ChangingRole -= PlayerEvents_ChangingRole;
+            PlayerEvents.ChangedRole -= PlayerEvents_ChangedRole;
 
 			FpcServerPositionDistributor.RoleSyncEvent -= FpcServerPositionDistributor_RoleSyncEvent;
 		}
