@@ -21,6 +21,7 @@ using PlayerRoles;
 using PlayerRoles.FirstPersonControl.NetworkMessages;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 using UserSettings.ServerSpecific;
@@ -116,6 +117,7 @@ namespace CustomFramework
             ServerSpecificSettingsSync.DefinedSettings = ServerSpecificSettingsSync.DefinedSettings.AddItem(new SSKeybindSetting(0, "Subclass Ability", UnityEngine.KeyCode.Z, true, false, null, 255)).ToArray();
 
             CustomSubclass.SubscribeStaticEvents();
+            CustomItem.SubscribeStaticEvents();
             CustomTeam.SubscribeStaticEvents();
 			CustomHintService.CustomHintService.Init();
         }
@@ -138,6 +140,7 @@ namespace CustomFramework
             ServerSpecificSettingsSync.ServerOnSettingValueReceived -= SettingValueReceived;
 
             CustomSubclass.UnsubscribeStaticEvents();
+            CustomItem.UnsubscribeStaticEvents();
             CustomTeam.UnsubscribeStaticEvents();
             CustomHintService.CustomHintService.DynamicHints.Clear();
             CustomHintService.CustomHintService.StaticHints.Clear();
@@ -249,8 +252,6 @@ namespace CustomFramework
         {
             // Replace with a method to register each class set.
 
-            Logger.Debug("Registering all custom subclasses.");
-
             Assembly assembly = Assembly.GetCallingAssembly();
 
             foreach (Type type in assembly.GetTypes())
@@ -284,6 +285,20 @@ namespace CustomFramework
                         Logger.Error($"Failed to instantiate custom item {type.FullName}: {ex}");
                     }
                 }
+                else if (typeof(CustomTeam).IsAssignableFrom(type))
+				{
+					try
+					{
+						CustomTeam team = (CustomTeam)Activator.CreateInstance(type);
+						Logger.Debug($"Attempting to register custom team {team.Identifier}");
+						if (!team.TryRegister())
+							Logger.Debug($"Could not register custom team {team.Identifier}");
+					}
+					catch (Exception ex)
+					{
+						Logger.Error($"Failed to instantiate custom team {type.FullName}: {ex}");
+					}
+				}
             }
 
             CustomSubclass.Registered = CustomSubclass.Registered.OrderBy(t => t.Id).ToHashSet();
@@ -301,5 +316,10 @@ namespace CustomFramework
     public class Config
     {
         public bool Debug { get; set; } = false;
+        //[Description("The chance of anyone being given a subclass. Values make a difference between 0 and 1.")]
+        //public float SubclassChance { get; set; } = 1f;
+        [Description("The chance of a custom item replacing a normal item. Values make a difference between 0 and 1.")]
+        public float CustomItemReplaceChance { get; set; } = 0.3f;
+        public float CustomTeamReplaceChance { get; set; } = 0.3f;
     }
 }
