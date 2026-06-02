@@ -1,16 +1,74 @@
 ﻿using CustomFramework.CustomHintService;
+using LabApi.Events.Handlers;
 using LabApi.Features.Wrappers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
-using Handlers = LabApi.Events.Handlers;
+using Logger = LabApi.Features.Console.Logger;
 
 namespace CustomFramework.CustomItems
 {
 	public abstract class CustomItem
 	{
 		public static HashSet<CustomItem> Registered { get; internal set; } = new HashSet<CustomItem>();
+
+		public static void SubscribeStaticEvents()
+		{
+			ServerEvents.ItemSpawned += ServerEvents_ItemSpawned;
+		}
+
+		public static void UnsubscribeStaticEvents()
+		{
+			ServerEvents.ItemSpawned -= ServerEvents_ItemSpawned;
+		}
+
+		private static void ServerEvents_ItemSpawned(LabApi.Events.Arguments.ServerEvents.ItemSpawnedEventArgs ev)
+		{
+			List<CustomItem> itemList;
+			itemList = Registered
+				.Where(t => t.GetType().GetCustomAttributes<CustomItemAttribute>().Any(r => r.Item == ev.Pickup.Type) &&
+					//!Disabled.Contains(t) &&
+					t.SpawnConditionsMet()
+				)
+				.ToList();
+
+			if (itemList.Count > 0)
+			{
+				if (CustomFrameworkPlugin.Random.NextDouble() > CustomFrameworkPlugin.Instance.Config.CustomItemReplaceChance)
+				{
+					Logger.Debug("Item not custom.");
+					return;
+				}
+
+				List<CustomItem> weightedRoles = new List<CustomItem>();
+				foreach (var item in itemList)
+				{
+					var attrList = item.GetType().GetCustomAttributes<CustomItemAttribute>();
+					foreach (var attr in attrList)
+					{
+						for (int i = 0; i < (int)attr.Tickets; i++)
+						{
+							weightedRoles.Add(item);
+						}
+					}
+				}
+
+				if (weightedRoles.Count > 0)
+				{
+					CustomItem chosenRole = weightedRoles[CustomFrameworkPlugin.Random.Next(weightedRoles.Count)];
+
+					chosenRole.TrackedSerials.Add(ev.Pickup.Serial);
+				}
+
+				Logger.Debug("Finished item spawned on Framework");
+			}
+			else
+			{
+				Logger.Debug($"No custom found for item: {ev.Pickup.Type}");
+			}
+		}
 
 		public abstract int Id { get; set; }
 		public abstract string Identifier { get; set; }
@@ -28,29 +86,25 @@ namespace CustomFramework.CustomItems
 		private void Init()
 		{
 			SubcribeEvents();
-			//Handlers.PlayerEvents.PickedUpItem += PlayerEvents_PickedUpItem;
-			//Handlers.PlayerEvents.ChangedItem += PlayerEvents_ChangedItem;
 		}
 
 		private void Destroy()
 		{
 			UnsubcribeEvents();
-			//Handlers.PlayerEvents.PickedUpItem -= PlayerEvents_PickedUpItem;
-			//Handlers.PlayerEvents.ChangedItem -= PlayerEvents_ChangedItem;
 		}
 		
 		public virtual void PickedUp(Player player)
 		{
-			var hint = new StaticHint(CustomTextService.Style.Default, $"Picked up {Name}", TimeSpan.FromSeconds(3));
+			var hint = new StaticHint(CustomTextService.Style.Default, $"Picked up {Name}\n{Description}", TimeSpan.FromSeconds(3));
 			CustomHintService.CustomHintService.RegisterHint(hint, player);
 		}
 
 		public virtual void ChangedToItem(Player player)
 		{
-			var hint = new StaticHint(CustomTextService.Style.Default, $"Switched to {Name}", TimeSpan.FromSeconds(3));
+			var hint = new StaticHint(CustomTextService.Style.Default, $"Switched to {Name}\n{Description}", TimeSpan.FromSeconds(3));
 			CustomHintService.CustomHintService.RegisterHint(hint, player);
 		}
-
+		
 		public virtual bool Check(Item item) => item != null && TrackedSerials.Contains(item.Serial);
 		public virtual bool Check(Pickup item) => item != null && TrackedSerials.Contains(item.Serial);
 		public virtual bool Check(Player player) => player != null && Check(player.CurrentItem);
