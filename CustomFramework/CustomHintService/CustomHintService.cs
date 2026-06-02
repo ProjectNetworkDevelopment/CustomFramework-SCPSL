@@ -109,6 +109,19 @@ namespace CustomFramework.CustomHintService
 			DynamicHints.TryAdd(player, new List<DynamicHint>() { hint });
 		}
 
+		public static void UnregisterHint(DynamicHint hint, Player player)
+		{
+			if (player == null) return;
+
+			if (hint.HintMethod == null)
+				throw new ArgumentNullException(nameof(hint), "Hint method cannot be null.");
+
+			if (DynamicHints.TryGetValue(player, out var val) && val.Contains(hint))
+			{
+				val.Remove(hint);
+			}
+		}
+
 		public static void RegisterHint(StaticHint hint, Player player)
 		{
 			if (player == null) return;
