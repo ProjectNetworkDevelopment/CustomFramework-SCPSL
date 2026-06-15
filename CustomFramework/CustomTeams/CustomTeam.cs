@@ -51,23 +51,6 @@ namespace CustomFramework.CustomTeams
 
 		private static void ServerEvents_WaveRespawning(WaveRespawningEventArgs ev)
 		{
-			//if (!PlayerSubclasses.TryGetValue(ev.Player, out var cs))
-			//{
-			//	PlayerSubclasses.Add(ev.Player, null);
-			//}
-			//else if (!string.IsNullOrEmpty(cs))
-			//{
-			//	var subclass = CustomSubclass.Get(cs);
-			//	subclass?.RemoveSubclass(ev.Player);
-			//	PlayerSubclasses[ev.Player] = null;
-			//}
-
-			// Future idea: Make this chance based, with a config for the chance.
-			var spawnTeam = CustomFrameworkPlugin.Random.NextDouble() > CustomFrameworkPlugin.Instance.Config.CustomTeamReplaceChance;
-			if (!spawnTeam) return;
-
-			ev.IsAllowed = false;
-
 			List<CustomTeam> teamList = Registered
 				.Where(t => t.GetType().GetCustomAttributes<CustomTeamAttribute>().Any(r => r.ReplacedTeam == ev.Wave.Faction) &&
 					t.SpawnConditionsMet()
@@ -88,6 +71,11 @@ namespace CustomFramework.CustomTeams
 
 				if (weightedRoles.Count > 0)
 				{
+					var spawnTeam = CustomFrameworkPlugin.Random.NextDouble() > CustomFrameworkPlugin.Instance.Config.CustomTeamReplaceChance;
+					if (!spawnTeam) return;
+
+					ev.IsAllowed = false;
+
 					CustomTeam team = weightedRoles[Random.Next(weightedRoles.Count)];
 					team.SpawnWave(ev.Roles, ev.Wave is MiniMtfWave || ev.Wave is MiniChaosWave);
 				}
