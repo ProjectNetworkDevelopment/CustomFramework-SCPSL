@@ -4,7 +4,7 @@ using LabApi.Features.Console;
 using LabApi.Features.Wrappers;
 using System;
 
-namespace CustomFramework.Commands.CustomSubclassCommand
+namespace CustomFramework.CustomSubclasses.CustomSubclassCommand
 {
     internal class Give : ICommand
     {

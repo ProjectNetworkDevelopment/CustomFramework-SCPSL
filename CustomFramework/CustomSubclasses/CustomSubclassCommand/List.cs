@@ -3,7 +3,7 @@ using CustomFramework.CustomSubclasses;
 using System;
 using System.Reflection;
 
-namespace CustomFramework.Commands.CustomSubclassCommand
+namespace CustomFramework.CustomSubclasses.CustomSubclassCommand
 {
     internal class List : ICommand
     {

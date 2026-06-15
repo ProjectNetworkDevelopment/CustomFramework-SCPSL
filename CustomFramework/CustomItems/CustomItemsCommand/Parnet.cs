@@ -1,7 +1,7 @@
 ﻿using CommandSystem;
 using System;
 
-namespace CustomFramework.Commands.CustomItemsCommand
+namespace CustomFramework.CustomItems.CustomItemsCommand
 {
 	[CommandHandler(typeof(RemoteAdminCommandHandler))]
 	internal class Parnet : ParentCommand

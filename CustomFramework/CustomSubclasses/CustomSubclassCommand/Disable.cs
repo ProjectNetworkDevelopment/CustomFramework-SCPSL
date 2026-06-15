@@ -2,7 +2,7 @@
 using CustomFramework.CustomSubclasses;
 using System;
 
-namespace CustomFramework.Commands.CustomSubclassCommand
+namespace CustomFramework.CustomSubclasses.CustomSubclassCommand
 {
 	internal class Disable : ICommand
 	{

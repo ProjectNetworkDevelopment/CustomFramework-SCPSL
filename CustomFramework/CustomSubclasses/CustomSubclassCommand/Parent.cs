@@ -1,7 +1,7 @@
 ﻿using CommandSystem;
 using System;
 
-namespace CustomFramework.Commands.CustomSubclassCommand
+namespace CustomFramework.CustomSubclasses.CustomSubclassCommand
 {
     [CommandHandler(typeof(RemoteAdminCommandHandler))]
     internal class Parent : ParentCommand

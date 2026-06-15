@@ -2,7 +2,7 @@
 using LabApi.Features.Wrappers;
 using System;
 
-namespace CustomFramework.Commands
+namespace CustomFramework
 {
 	[CommandHandler(typeof(RemoteAdminCommandHandler))]
 	public class ExperimentalMode : ICommand

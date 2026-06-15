@@ -1,12 +1,11 @@
 ﻿using CommandSystem;
-using CustomFramework.CustomSubclasses;
 using LabApi.Features.Wrappers;
 using System;
 
-namespace CustomFramework.Commands
+namespace CustomFramework.CustomSubclasses
 {
     [CommandHandler(typeof(ClientCommandHandler))]
-    internal class RoleInfo : ICommand
+    internal class RoleInfoCommand : ICommand
     {
         public string Command => "roleinfo";
 

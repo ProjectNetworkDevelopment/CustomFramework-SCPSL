@@ -6,7 +6,7 @@ using LabApi.Features.Wrappers;
 using System;
 using System.Reflection;
 
-namespace CustomFramework.Commands.CustomItemsCommand
+namespace CustomFramework.CustomItems.CustomItemsCommand
 {
 	internal class Give : ICommand
 	{
