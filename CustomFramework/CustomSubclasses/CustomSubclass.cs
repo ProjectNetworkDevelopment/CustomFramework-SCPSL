@@ -62,10 +62,10 @@ namespace CustomFramework.CustomSubclasses
 
 		private static void PlayerEvents_ChangedRole(PlayerChangedRoleEventArgs ev)
 		{
-            if (ev.ChangeReason == (RoleChangeReason)12) return;
+            if (ev.ChangeReason == CustomFlags.DontChangeSubclass) return;
 			
             List<CustomSubclass> roleList;
-			if (ev.ChangeReason == (RoleChangeReason)11)
+			if (ev.ChangeReason == CustomFlags.SpecifiedTeam)
 			{
                 roleList = Registered
                     .Where(t => t.GetType().GetCustomAttributes<CustomSubclassAttribute>().Any(attr => attr.TeamString == ev.Player.CustomInfo) &&
@@ -199,7 +199,7 @@ namespace CustomFramework.CustomSubclasses
             player.SendBroadcast($"You are the {Name}.\n{Description}", 5);
 
             if (setRole && DefaultRole != null)
-                player.SetRole((RoleTypeId)DefaultRole, flags: RoleSpawnFlags.None, reason: (RoleChangeReason)12);
+                player.SetRole((RoleTypeId)DefaultRole, flags: RoleSpawnFlags.None, reason: CustomFlags.DontChangeSubclass);
 		}
 
         public virtual void RemoveSubclass(Player player)

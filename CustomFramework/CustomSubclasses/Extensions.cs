@@ -1,4 +1,4 @@
-﻿using CustomFramework.Enums;
+﻿using CustomFramework.Features;
 using LabApi.Features.Wrappers;
 using PlayerRoles;
 using PlayerRoles.FirstPersonControl;
@@ -28,7 +28,7 @@ namespace CustomFramework.CustomSubclasses
         public static void SetRole(this Player player, RoleTypeId role, string team, RoleSpawnFlags flags = (RoleSpawnFlags)(-1))
         {
             player.CustomInfo = team;
-            player.SetRole(role, reason: (RoleChangeReason)11, flags: flags);
+            player.SetRole(role, reason: CustomFlags.SpecifiedTeam, flags: flags);
         }
     }
 }
