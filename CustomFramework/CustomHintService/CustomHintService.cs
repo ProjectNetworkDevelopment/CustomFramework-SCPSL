@@ -44,7 +44,7 @@ namespace CustomFramework.CustomHintService
 					Logger.Error($"[CustomFramework] Error in CustomHintService coroutine: {ex}");
 				}
 
-				Thread.Sleep(1000);
+				await Task.Delay(1000);
 			}
 		}
 
