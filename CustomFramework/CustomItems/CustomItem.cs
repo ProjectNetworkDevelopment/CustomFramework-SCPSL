@@ -13,8 +13,9 @@ namespace CustomFramework.CustomItems
 	public abstract class CustomItem
 	{
 		public static HashSet<CustomItem> Registered { get; internal set; } = new HashSet<CustomItem>();
+        public static HashSet<CustomItem> Disabled { get; set; } = new HashSet<CustomItem>();
 
-		public static void SubscribeStaticEvents()
+        public static void SubscribeStaticEvents()
 		{
 			ServerEvents.ItemSpawned += ServerEvents_ItemSpawned;
 		}
@@ -26,47 +27,59 @@ namespace CustomFramework.CustomItems
 
 		private static void ServerEvents_ItemSpawned(LabApi.Events.Arguments.ServerEvents.ItemSpawnedEventArgs ev)
 		{
-			List<CustomItem> itemList;
-			itemList = Registered
-				.Where(t => t.GetType().GetCustomAttributes<CustomItemAttribute>().Any(r => r.Item == ev.Pickup.Type) &&
-					//!Disabled.Contains(t) &&
-					t.SpawnConditionsMet()
-				)
-				.ToList();
+			Dictionary<CustomItem, float> itemList = new Dictionary<CustomItem, float>();
+			float sum = 0f;
+
+			foreach (var item in Registered)
+			{
+                var type = item.GetType();
+                var attrs = type.GetCustomAttributes<CustomItemAttribute>();
+
+				itemList.Add(item, 0f);
+
+				if (Disabled.Contains(item)) continue;
+                if (!item.SpawnConditionsMet()) continue;
+				foreach (var attr in attrs)
+				{
+					if (attr.Item != ev.Pickup.Type) continue;
+					
+					itemList[item] += attr.Tickets;
+					sum += attr.Tickets;
+				}
+
+				if (itemList[item] <= 0)
+				{
+					itemList.Remove(item);
+				}
+			}
 
 			if (itemList.Count > 0)
 			{
 				if (CustomFrameworkPlugin.Random.NextDouble() > CustomFrameworkPlugin.Instance.Config.CustomItemReplaceChance)
 				{
-					Logger.Debug("Item not custom.");
+					Logger.Debug("Item not custom.", CustomFrameworkPlugin.Debug);
 					return;
 				}
 
-				List<CustomItem> weightedRoles = new List<CustomItem>();
-				foreach (var item in itemList)
-				{
-					var attrList = item.GetType().GetCustomAttributes<CustomItemAttribute>();
-					foreach (var attr in attrList)
-					{
-						for (int i = 0; i < (int)attr.Tickets; i++)
-						{
-							weightedRoles.Add(item);
-						}
-					}
-				}
+                var norm = CustomFrameworkPlugin.Random.NextDouble();
+                float num = (float)(norm * sum);
 
-				if (weightedRoles.Count > 0)
-				{
-					CustomItem chosenRole = weightedRoles[CustomFrameworkPlugin.Random.Next(weightedRoles.Count)];
+                CustomItem chosenRole = null;
+                foreach (var role in itemList)
+                {
+                    num -= role.Value;
+                    if (num > 0) continue;
+                    chosenRole = role.Key;
+                    break;
+                }
+				
+				chosenRole.TrackedSerials.Add(ev.Pickup.Serial);
 
-					chosenRole.TrackedSerials.Add(ev.Pickup.Serial);
-				}
-
-				Logger.Debug("Finished item spawned on Framework");
+				Logger.Debug("Finished item spawned on Framework", CustomFrameworkPlugin.Debug);
 			}
 			else
 			{
-				Logger.Debug($"No custom found for item: {ev.Pickup.Type}");
+				Logger.Debug($"No custom found for item: {ev.Pickup.Type}", CustomFrameworkPlugin.Debug);
 			}
 		}
 
@@ -114,7 +127,7 @@ namespace CustomFramework.CustomItems
 			var pickup = Pickup.Create(item, position);
 			pickup.Spawn();
 			TrackedSerials.Add(pickup.Serial);
-			LabApi.Features.Console.Logger.Debug("Spawned object.");
+			LabApi.Features.Console.Logger.Debug("Spawned object.", CustomFrameworkPlugin.Debug);
 			return pickup;
 		}
 

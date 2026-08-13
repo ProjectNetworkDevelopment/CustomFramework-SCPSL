@@ -18,6 +18,8 @@ namespace CustomFramework.CustomSubclasses.CustomSubclassCommand
 
         public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
         {
+            // ADD ABILITY TO SPECIFY ROLE SPAWN FLAGS
+
             Player player = Player.Get(sender);
 
             if (arguments.Count < 1)
@@ -54,10 +56,11 @@ namespace CustomFramework.CustomSubclasses.CustomSubclassCommand
                 {
                     if (CustomSubclass.PlayerSubclasses[ply] != null)
                         CustomSubclass.PlayerSubclasses[ply].RemoveSubclass(ply);
-                    if (arguments.Count == 3)
-                        subclass.GiveSubclass(ply, arguments.At(2) == "true");
-                    else
-                        subclass.GiveSubclass(ply, false);
+                    subclass.GiveSubclass(ply, PlayerRoles.RoleSpawnFlags.AssignInventory);
+                    //if (arguments.Count == 3)
+                    //    subclass.GiveSubclass(ply, arguments.At(2) == "true");
+                    //else
+                    //    subclass.GiveSubclass(ply, false);
                 }
                 response = "Subclass given to all players.";
                 return true;
@@ -78,12 +81,13 @@ namespace CustomFramework.CustomSubclasses.CustomSubclassCommand
                 if (CustomSubclass.PlayerSubclasses[Player.Get(p)] != null)
                     CustomSubclass.PlayerSubclasses[Player.Get(p)].RemoveSubclass(Player.Get(p));
 
-                if (arguments.Count >= 3)
-                    subclass.GiveSubclass(Player.Get(p), arguments.At(2) == "true");
-                else if (arguments.Count == 2)
-                    subclass.GiveSubclass(Player.Get(p), arguments.At(1) == "true");
-                else
-                    subclass.GiveSubclass(Player.Get(p), false);
+                subclass.GiveSubclass(Player.Get(p), PlayerRoles.RoleSpawnFlags.AssignInventory);
+                //if (arguments.Count >= 3)
+                //    subclass.GiveSubclass(Player.Get(p), arguments.At(2) == "true");
+                //else if (arguments.Count == 2)
+                //    subclass.GiveSubclass(Player.Get(p), arguments.At(1) == "true");
+                //else
+                //    subclass.GiveSubclass(Player.Get(p), false);
                 response = "Subclass given to player.";
                 return true;
             }

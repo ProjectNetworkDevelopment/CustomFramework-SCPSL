@@ -5,6 +5,13 @@ namespace CustomFramework.CustomHintService
 {
 	public class StaticHint
 	{
+		public StaticHint(string text, TimeSpan? expiration)
+		{
+			Hint = text;
+            Expiration = expiration;
+            StartTime = DateTime.UtcNow;
+        }
+
 		public StaticHint(Style style, string text, TimeSpan? expiration)
 		{
 			Style = style;
@@ -13,7 +20,7 @@ namespace CustomFramework.CustomHintService
 			StartTime = DateTime.UtcNow;
 		}
 
-		public Style Style { get; set; }
+		public Style Style { get; set; } = Style.Default;
 		public string Hint { get; set; }
 		internal DateTime StartTime { get; set; }
 		public TimeSpan? Expiration { get; set; }

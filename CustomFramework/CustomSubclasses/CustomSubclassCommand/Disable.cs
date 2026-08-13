@@ -33,6 +33,12 @@ namespace CustomFramework.CustomSubclasses.CustomSubclassCommand
 				return false;
 			}
 
+			if (CustomSubclass.Disabled.Contains(sc))
+			{
+				response = "Subclass already disabled.";
+				return false;
+			}
+
 			CustomSubclass.Disabled.Add(sc);
 			DatabaseHandler.SaveDatabase();
 			response = "Subclass disabled.";

@@ -1,4 +1,5 @@
 ﻿using CustomFramework.CustomSubclasses;
+using LabApi.Features.Console;
 using LabApi.Features.Wrappers;
 using LabApi.Loader.Features.Paths;
 using System.Collections.Generic;
@@ -11,44 +12,36 @@ namespace CustomFramework
 	public class DatabaseHandler
 	{
 		internal static DatabaseModel Database { get; set; } = new DatabaseModel();
+		internal static string DatabasePath { get; set; } = Path.Combine(PathManager.Configs.FullName, "Custom Framework", $"{Server.Port}.yml");
 
 		internal static void LoadDatabase()
 		{
 			var deserializer = new DeserializerBuilder().Build();
 
-			var filePath = Path.Combine(PathManager.Configs.FullName, "Custom Framework", $"{Server.Port}.yml");
-			if (!Directory.Exists(Path.Combine(filePath, "../")))
+			if (!Directory.Exists(Path.Combine(DatabasePath, "../")))
 			{
-				Directory.CreateDirectory(Path.Combine(filePath, "../"));
+				Directory.CreateDirectory(Path.Combine(DatabasePath, "../"));
 			}
-			if (!File.Exists(filePath))
+			if (!File.Exists(DatabasePath))
 			{
 				Database = new DatabaseModel();
 				SaveDatabase();
 				return;
 			}
 
-			Database = deserializer.Deserialize<DatabaseModel>(File.ReadAllText(filePath));
-
-			foreach (var id in Database.DisabledSubclasses)
-			{
-				var sc = CustomSubclass.Get(id);
-				if (sc != null)
-					CustomSubclass.Disabled.Add(sc);
-			}
+			Database = deserializer.Deserialize<DatabaseModel>(File.ReadAllText(DatabasePath));
 		}
 
 		public static void SaveDatabase()
 		{
 			var serializer = new SerializerBuilder().Build();
 
-			var filePath = Path.Combine(PathManager.Configs.FullName, "Custom Framework", $"{Server.Port}.yml");
-			if (!Directory.Exists(Path.Combine(filePath, "../")))
-				Directory.CreateDirectory(Path.Combine(filePath, "../"));
+			if (!Directory.Exists(Path.Combine(DatabasePath, "../")))
+				Directory.CreateDirectory(Path.Combine(DatabasePath, "../"));
 
 			Database.DisabledSubclasses = CustomSubclass.Disabled.Select(x => x.Identifier).ToList();
 
-			File.WriteAllText(filePath, serializer.Serialize(Database));
+			File.WriteAllText(DatabasePath, serializer.Serialize(Database));
 		}
 	}
 

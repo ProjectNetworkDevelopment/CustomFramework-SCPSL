@@ -1,6 +1,7 @@
 ﻿using Cassie;
 using CustomFramework.CustomSubclasses;
 using CustomFramework.Interfaces;
+using CustomPlayerEffects;
 using LabApi.Events.Arguments.ServerEvents;
 using LabApi.Events.Handlers;
 using LabApi.Features.Wrappers;
@@ -15,6 +16,7 @@ namespace CustomFramework.CustomTeams
 	public abstract class CustomTeam
 	{
 		public static HashSet<CustomTeam> Registered { get; set; } = new HashSet<CustomTeam>();
+		public static HashSet<CustomTeam> Disabled { get; set; } = new HashSet<CustomTeam>();
 		// Future idea: Use this to track teams, and add a Check function,
 		// as well as a death removal.
 		public static Dictionary<Player, string> PlayerTeams { get; set; } = new Dictionary<Player, string>();
@@ -50,41 +52,49 @@ namespace CustomFramework.CustomTeams
 		}
 
 		private static void ServerEvents_WaveRespawning(WaveRespawningEventArgs ev)
-		{
-			List<CustomTeam> teamList = Registered
-				.Where(t => t.GetType().GetCustomAttributes<CustomTeamAttribute>().Any(r => r.ReplacedTeam == ev.Wave.Faction) &&
-					t.SpawnConditionsMet()
-				)
-				.ToList();
+        {
+            if (CustomFrameworkPlugin.Random.NextDouble() > CustomFrameworkPlugin.Instance.Config.CustomTeamReplaceChance) return;
+
+            List<CustomTeam> teamList = new List<CustomTeam>();
+			float sum = 0f;
+			foreach (var team in Registered)
+			{
+                var type = team.GetType();
+                var attrs = type.GetCustomAttributes<CustomTeamAttribute>();
+
+				if (!attrs.Any(t => t.ReplacedTeam == ev.Wave.Faction)) continue;
+				if (Disabled.Contains(team)) continue;
+				if (!team.SpawnConditionsMet()) continue;
+				if (team.SpawnTickets <= 0f) continue;
+
+				teamList.Add(team);
+			}
 
 			if (teamList.Count > 0)
 			{
-				List<CustomTeam> weightedRoles = new List<CustomTeam>();
-
+                var norm = CustomFrameworkPlugin.Random.NextDouble();
+                float num = (float)(norm * sum);
+				
+				CustomTeam chosenTeam = null;
 				foreach (var team in teamList)
 				{
-					for (int i = 0; i < (int)team.SpawnTickets; i++)
-					{
-						weightedRoles.Add(team);
-					}
+					num -= team.SpawnTickets;
+					if (num > 0) continue;
+					chosenTeam = team;
+					break;
 				}
 
-				if (weightedRoles.Count > 0)
-				{
-					var spawnTeam = CustomFrameworkPlugin.Random.NextDouble() > CustomFrameworkPlugin.Instance.Config.CustomTeamReplaceChance;
-					if (!spawnTeam) return;
+				if (chosenTeam == null) return;
 
-					ev.IsAllowed = false;
+				ev.IsAllowed = false;
 
-					CustomTeam team = weightedRoles[Random.Next(weightedRoles.Count)];
-					team.SpawnWave(ev.Roles, ev.Wave is MiniMtfWave || ev.Wave is MiniChaosWave);
-				}
+				chosenTeam.SpawnWave(ev.Roles, ev.Wave is MiniMtfWave || ev.Wave is MiniChaosWave);
 
-				Logger.Debug("Finished player spawned on Framework");
+				Logger.Debug("Finished player spawned on Framework", CustomFrameworkPlugin.Debug);
 			}
 			else
 			{
-				Logger.Debug($"No custom found for team: {ev.Wave}");
+				Logger.Debug($"No custom found for team: {ev.Wave}", CustomFrameworkPlugin.Debug);
 			}
 		}
 
@@ -92,7 +102,7 @@ namespace CustomFramework.CustomTeams
 		public abstract string Identifier { get; set; }
 		public abstract string Name { get; set; }
 		public abstract float SpawnTickets { get; set; }
-		public virtual CassieTtsPayload? CassieAnnouncement { get; set; } = null;
+		public virtual TeamCassieBase CassieAnnouncement { get; set; } = null;
 		public virtual bool SpawnCustomRoles { get; set; } = false;
 
 		public int Tokens { get; set; } = 1;
@@ -119,6 +129,20 @@ namespace CustomFramework.CustomTeams
 				else
 					player.Key.SetRole(player.Value, reason: RoleChangeReason.Respawn);
 			}
+			SendCassie();
+        }
+
+		public virtual void SendCassie()
+		{
+			if (CassieAnnouncement == null) return;
+
+			SendTeamCassie(CassieAnnouncement);
+		}
+
+		public static void SendTeamCassie(TeamCassieBase payload)
+		{
+			var cassieMessage = new CassieAnnouncement(payload.GetPayload());
+			cassieMessage.AddToQueue();
 		}
 
 		public virtual void Init()

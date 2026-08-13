@@ -3,6 +3,7 @@ using System;
 
 namespace CustomFramework.CustomSubclasses.CustomSubclassCommand
 {
+    //[CommandHandler(typeof(GameConsoleCommandHandler))]
     [CommandHandler(typeof(RemoteAdminCommandHandler))]
     internal class Parent : ParentCommand
     {
@@ -20,6 +21,7 @@ namespace CustomFramework.CustomSubclasses.CustomSubclassCommand
             RegisterCommand(List.Instance);
             RegisterCommand(Give.Instance);
             RegisterCommand(Disable.Instance);
+            RegisterCommand(Enable.Instance);
         }
 
         protected override bool ExecuteParent(ArraySegment<string> arguments, ICommandSender sender, out string response)

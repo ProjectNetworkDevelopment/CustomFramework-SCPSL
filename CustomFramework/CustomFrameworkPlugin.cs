@@ -1,10 +1,10 @@
+using CustomFramework.CustomEffects;
 using CustomFramework.CustomHintService;
 using CustomFramework.CustomItems;
 using CustomFramework.CustomSubclasses;
 using CustomFramework.CustomTeams;
 using CustomFramework.CustomTextService;
 using CustomFramework.EventArgs;
-using CustomFramework.Features;
 using CustomFramework.Interfaces;
 using HarmonyLib;
 using InventorySystem.Items.Usables.Scp330;
@@ -15,9 +15,6 @@ using LabApi.Features.Console;
 using LabApi.Features.Wrappers;
 using LabApi.Loader.Features.Plugins;
 using MEC;
-using Mirror;
-using PlayerRoles;
-using PlayerRoles.FirstPersonControl.NetworkMessages;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -30,12 +27,18 @@ namespace CustomFramework
     public class CustomFrameworkPlugin : Plugin<Config>
     {
         public static CustomFrameworkPlugin Instance;
+        public static bool Debug
+        {
+            get => Instance.Config.Debug;
+        }
         internal static List<ICoroutineObject> coroutineRoles { get; set; }
         internal static List<ICoroutineObject> coroutineItems { get; set; }
 
         public static Random Random = new Random();
 
         public static Harmony Patcher = new Harmony("PyroCycloneProjects.CustomFramework");
+
+        public static Assembly FrameworkAssembly = Assembly.GetExecutingAssembly();
 
         public CustomFrameworkPlugin()
         {
@@ -48,7 +51,7 @@ namespace CustomFramework
 
         public override string Author => "Pyro Cyclone Projects";
 
-        public override Version Version => new Version(3, 3, 0);
+        public override Version Version => new Version(4, 0, 0);
 
         public override Version RequiredApiVersion => new Version(1, 0, 0);
 
@@ -95,11 +98,16 @@ namespace CustomFramework
 
         public override void Enable()
         {
-			Logger.Debug("Custom Framework patching");
+			Logger.Debug("Custom Framework patching", Debug);
             Patcher.PatchAll();
-            Logger.Debug("Custom Framework finished patching");
+            Logger.Debug("Custom Framework finished patching", Debug);
 
 			DatabaseHandler.LoadDatabase();
+
+            ServerEvents.RoundStarted += RoundStarted;
+            ServerEvents.RoundEnded += RoundEnded;
+            ServerEvents.RoundRestarted += ServerEvents_RoundRestarted;
+            ServerEvents.WaitingForPlayers += ServerEvents_WaitingForPlayers;
 
             PlayerEvents.Joined += PlayerEvents_Joined;
             PlayerEvents.GroupChanged += PlayerEvents_GroupChanged;
@@ -107,23 +115,25 @@ namespace CustomFramework
             PlayerEvents.ChangedItem += PlayerEvents_ChangedItem;
             PlayerEvents.PickedUpItem += PlayerEvents_PickedUpItem;
 
-            ServerEvents.RoundStarted += RoundStarted;
-            ServerEvents.RoundEnded += RoundEnded;
-            ServerEvents.MapGenerated += ServerEvents_MapGenerated;
-            ServerEvents.RoundRestarted += ServerEvents_RoundRestarted;
-
             ServerSpecificSettingsSync.ServerOnSettingValueReceived += SettingValueReceived;
             ServerSpecificSettingsSync.DefinedSettings = ServerSpecificSettingsSync.DefinedSettings.AddItem(new SSKeybindSetting(0, "Subclass Ability", UnityEngine.KeyCode.Z, true, false, null, 255)).ToArray();
 
             CustomSubclass.SubscribeStaticEvents();
             CustomItem.SubscribeStaticEvents();
             CustomTeam.SubscribeStaticEvents();
+            CustomEffect.SubscribeStaticEvents();
+            MovementKit.SubscribeStaticEvents();
 			CustomHintService.CustomHintService.Init();
         }
 
-		public override void Disable()
+        public override void Disable()
         {
-			Patcher.UnpatchAll("PyroCycloneProjects.CustomFramework");
+			Patcher.UnpatchAll(Patcher.Id);
+
+            ServerEvents.RoundStarted -= RoundStarted;
+            ServerEvents.RoundEnded -= RoundEnded;
+            ServerEvents.RoundRestarted -= ServerEvents_RoundRestarted;
+            ServerEvents.WaitingForPlayers -= ServerEvents_WaitingForPlayers;
 
             PlayerEvents.Joined -= PlayerEvents_Joined;
             PlayerEvents.GroupChanged -= PlayerEvents_GroupChanged;
@@ -131,19 +141,28 @@ namespace CustomFramework
             PlayerEvents.ChangedItem -= PlayerEvents_ChangedItem;
             PlayerEvents.PickedUpItem -= PlayerEvents_PickedUpItem;
 
-            ServerEvents.RoundStarted -= RoundStarted;
-            ServerEvents.RoundEnded -= RoundEnded;
-            ServerEvents.MapGenerated -= ServerEvents_MapGenerated;
-            ServerEvents.RoundRestarted -= ServerEvents_RoundRestarted;
-
             ServerSpecificSettingsSync.ServerOnSettingValueReceived -= SettingValueReceived;
 
             CustomSubclass.UnsubscribeStaticEvents();
             CustomItem.UnsubscribeStaticEvents();
             CustomTeam.UnsubscribeStaticEvents();
-            CustomHintService.CustomHintService.DynamicHints.Clear();
-            CustomHintService.CustomHintService.StaticHints.Clear();
+            CustomEffect.UnsubscribeStaticEvents();
+            MovementKit.UnsubscribeStaticEvents();
+            CustomHintService.CustomHintService.Destroy();
 		}
+
+        private void ServerEvents_WaitingForPlayers()
+        {
+            foreach (var id in DatabaseHandler.Database.DisabledSubclasses)
+            {
+                var sc = CustomSubclass.Get(id);
+                if (sc != null)
+                {
+                    CustomSubclass.Disabled.Add(sc);
+                    Logger.Debug($"Disabled {sc.Name}", Debug);
+                }
+            }
+        }
 
 		private void PlayerEvents_PickedUpItem(PlayerPickedUpItemEventArgs ev)
 		{
@@ -183,11 +202,6 @@ namespace CustomFramework
                 ev.Player.SendBroadcast("Experimental Mode is enabled this round. Expect jank.", 10);
 		}
 
-		private void ServerEvents_MapGenerated(MapGeneratedEventArgs ev)
-		{
-            // Spawn items
-		}
-
         private void SettingValueReceived(ReferenceHub sender, ServerSpecificSettingBase setting)
         {
             if (setting is SSKeybindSetting s && s.SyncIsPressed)
@@ -214,7 +228,7 @@ namespace CustomFramework
 
         private void RoundStarted()
         {
-            Logger.Debug("Round started, starting Coroutines");
+            Logger.Debug("Round started, starting Coroutines", Debug);
 
             coroutineRoles = CustomSubclass.Registered
                 .OfType<ICoroutineObject>()
@@ -261,9 +275,9 @@ namespace CustomFramework
                     try
                     {
                         CustomSubclass subclass = (CustomSubclass)Activator.CreateInstance(type);
-                        Logger.Debug($"Attempting to register subclass {subclass.Identifier}");
+                        Logger.Debug($"Attempting to register subclass {subclass.Identifier}", Debug);
                         if (!subclass.TryRegister())
-                            Logger.Debug($"Could not register subclass {subclass.Identifier}");
+                            Logger.Debug($"Could not register subclass {subclass.Identifier}", Debug);
                     }
                     catch (Exception ex)
                     {
@@ -275,9 +289,9 @@ namespace CustomFramework
                     try
                     {
                         CustomItem item = (CustomItem)Activator.CreateInstance(type);
-                        Logger.Debug($"Attempting to register custom item {item.Identifier}");
+                        Logger.Debug($"Attempting to register custom item {item.Identifier}", Debug);
                         if (!item.TryRegister())
-                            Logger.Debug($"Could not register custom item {item.Identifier}");
+                            Logger.Debug($"Could not register custom item {item.Identifier}", Debug);
                     }
                     catch (Exception ex)
                     {
@@ -289,15 +303,29 @@ namespace CustomFramework
 					try
 					{
 						CustomTeam team = (CustomTeam)Activator.CreateInstance(type);
-						Logger.Debug($"Attempting to register custom team {team.Identifier}");
-						if (!team.TryRegister())
-							Logger.Debug($"Could not register custom team {team.Identifier}");
+                        Logger.Debug($"Attempting to register custom team {team.Identifier}", Debug);
+                        if (!team.TryRegister())
+                            Logger.Debug($"Could not register custom team {team.Identifier}", Debug);
 					}
 					catch (Exception ex)
 					{
 						Logger.Error($"Failed to instantiate custom team {type.FullName}: {ex}");
 					}
 				}
+                else if (typeof(CustomEffect).IsAssignableFrom(type))
+                {
+                    try
+                    {
+                        CustomEffect effect = (CustomEffect)Activator.CreateInstance(type);
+                        Logger.Debug($"Attempting to register custom team {effect.Identifier}", Debug);
+                        if (!effect.TryRegister())
+                            Logger.Debug($"Could not register custom team {effect.Identifier}", Debug);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error($"Failed to instantiate custom effect {type.FullName}: {ex}");
+                    }
+                }
             }
 
             CustomSubclass.Registered = CustomSubclass.Registered.OrderBy(t => t.Id).ToHashSet();
@@ -319,6 +347,7 @@ namespace CustomFramework
         //public float SubclassChance { get; set; } = 1f;
         [Description("The chance of a custom item replacing a normal item. Values make a difference between 0 and 1.")]
         public float CustomItemReplaceChance { get; set; } = 0.3f;
+        [Description("The chance of a custom team replacing a normal team. Values make a difference between 0 and 1.")]
         public float CustomTeamReplaceChance { get; set; } = 0.3f;
     }
 }

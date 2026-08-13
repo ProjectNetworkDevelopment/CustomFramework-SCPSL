@@ -1,11 +1,9 @@
-﻿using CustomFramework.Interfaces;
-using LabApi.Features.Wrappers;
+﻿using LabApi.Features.Wrappers;
 using MEC;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Logger = LabApi.Features.Console.Logger;
 
@@ -20,9 +18,14 @@ namespace CustomFramework.CustomHintService
 			if (coroutine == null) coroutine = Task.Run(Coroutine);
 		}
 
+		internal static void Destroy()
+        {
+            DynamicHints.Clear();
+            StaticHints.Clear();
+        }
+
 		public static async Task Coroutine()
 		{
-
 			Logger.Debug("CustomHintService coroutine started.", CustomFrameworkPlugin.Instance.Config.Debug);
 
 			while (true)
@@ -36,7 +39,7 @@ namespace CustomFramework.CustomHintService
 						var hint = GetPlayerHint(player);
 						if (string.IsNullOrEmpty(hint)) continue;
 
-						MainThreadDispatcher.Dispatch(() => player.SendHint(hint));
+						MainThreadDispatcher.Dispatch(() => { if (player.IsReady) player.SendHint(hint); });
 					}
 				}
 				catch (Exception ex)
@@ -44,7 +47,7 @@ namespace CustomFramework.CustomHintService
 					Logger.Error($"[CustomFramework] Error in CustomHintService coroutine: {ex}");
 				}
 
-				await Task.Delay(1000);
+				await Task.Delay(1);
 			}
 		}
 

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.11.35208.52
+# Visual Studio Version 18
+VisualStudioVersion = 18.6.11822.322 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{F412482B-C5E5-418D-ACD4-8B3AC1A4EB05}"
 	ProjectSection(SolutionItems) = preProject
@@ -17,6 +17,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SuperPowerAPI", "..\Super Candy\SuperPowerAPI\SuperPowerAPI.csproj", "{2D0CD40B-A9D9-4755-BEB5-6369CAACAC27}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustomFramework.SuperPowerAPI", "CustomFramework.SuperPowerAPI\CustomFramework.SuperPowerAPI.csproj", "{5AE5F914-8106-4E21-8CA3-61E3C92EDFF8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustomFramework.Exiled", "CustomFramework.Exiled\CustomFramework.Exiled.csproj", "{D26B6DE4-C2CB-4D35-9794-781A0F5DBB58}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -44,6 +46,10 @@ Global
 		{5AE5F914-8106-4E21-8CA3-61E3C92EDFF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5AE5F914-8106-4E21-8CA3-61E3C92EDFF8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5AE5F914-8106-4E21-8CA3-61E3C92EDFF8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D26B6DE4-C2CB-4D35-9794-781A0F5DBB58}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D26B6DE4-C2CB-4D35-9794-781A0F5DBB58}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D26B6DE4-C2CB-4D35-9794-781A0F5DBB58}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D26B6DE4-C2CB-4D35-9794-781A0F5DBB58}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

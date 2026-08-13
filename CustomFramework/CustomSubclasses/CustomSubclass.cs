@@ -4,9 +4,12 @@ using LabApi.Events.Arguments.PlayerEvents;
 using LabApi.Events.Handlers;
 using LabApi.Features.Wrappers;
 using MEC;
+using Mirror;
 using PlayerRoles;
 using PlayerRoles.FirstPersonControl.NetworkMessages;
+using Respawning.NamingRules;
 using System.Collections.Generic;
+using System.IO.Ports;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
@@ -19,9 +22,11 @@ namespace CustomFramework.CustomSubclasses
     {
         public static HashSet<CustomSubclass> Registered = new HashSet<CustomSubclass>();
 
-        public static HashSet<CustomSubclass> Disabled = new HashSet<CustomSubclass>();
+        public static HashSet<CustomSubclass> Disabled { get; set; } = new HashSet<CustomSubclass>();
+        public static Dictionary<Player, CustomSubclass> PlayerPreviousSubclasses { get; set; } = new Dictionary<Player, CustomSubclass>();
 		public static Dictionary<Player, CustomSubclass> PlayerSubclasses { get; set; } = new Dictionary<Player, CustomSubclass>();
 		public static Dictionary<uint, DisguisedPlayer> DisguisedPlayers { get; set; } = new Dictionary<uint, DisguisedPlayer>();
+        public static Dictionary<Player, RoleChangeReason> PlayerCustomFlags { get; set; } = new Dictionary<Player, RoleChangeReason>();
 
 		public static System.Random Random = CustomFrameworkPlugin.Random;
         
@@ -29,23 +34,63 @@ namespace CustomFramework.CustomSubclasses
         {
             PlayerEvents.ChangingRole += PlayerEvents_ChangingRole;
 			PlayerEvents.ChangedRole += PlayerEvents_ChangedRole;
+            PlayerEvents.RequestedRaPlayerInfo += PlayerEvents_RequestedRaPlayerInfo;
+            PlayerEvents.Joined += PlayerEvents_Joined;
 
             FpcServerPositionDistributor.RoleSyncEvent += FpcServerPositionDistributor_RoleSyncEvent;
 		}
 
-		internal static void UnsubscribeStaticEvents()
+        internal static void UnsubscribeStaticEvents()
         {
 			PlayerEvents.ChangingRole -= PlayerEvents_ChangingRole;
             PlayerEvents.ChangedRole -= PlayerEvents_ChangedRole;
+            PlayerEvents.RequestedRaPlayerInfo -= PlayerEvents_RequestedRaPlayerInfo;
+            PlayerEvents.Joined -= PlayerEvents_Joined;
 
-			FpcServerPositionDistributor.RoleSyncEvent -= FpcServerPositionDistributor_RoleSyncEvent;
+            FpcServerPositionDistributor.RoleSyncEvent -= FpcServerPositionDistributor_RoleSyncEvent;
 		}
 
-		private static RoleTypeId FpcServerPositionDistributor_RoleSyncEvent(ReferenceHub source, ReferenceHub dest, RoleTypeId role, Mirror.NetworkWriter arg4)
+        private static void PlayerEvents_Joined(PlayerJoinedEventArgs ev)
+        {
+            PlayerPreviousSubclasses.Add(ev.Player, null);
+        }
+
+        private static void PlayerEvents_RequestedRaPlayerInfo(PlayerRequestedRaPlayerInfoEventArgs ev)
+        {
+            if (PlayerSubclasses.TryGetValue(ev.Target, out var subclass) && subclass != null)
+            {
+                ev.InfoBuilder.Append($"\nSubclass: {subclass.Identifier}");
+                if (subclass is IPlayerInfoDataSubclass data)
+                {
+                    data.AppendData(ev.InfoBuilder);
+                }
+            }
+        }
+
+		private static RoleTypeId FpcServerPositionDistributor_RoleSyncEvent(ReferenceHub source, ReferenceHub dest, RoleTypeId role, Mirror.NetworkWriter writer)
 		{
 			if (DisguisedPlayers.TryGetValue(source.netId, out DisguisedPlayer disguisedPlayer) &&
 				(disguisedPlayer.AffectedPlayers == null || disguisedPlayer.AffectedPlayers.Contains(Player.Get(dest))))
 			{
+                switch (disguisedPlayer.Disguise)
+                {
+                    case RoleTypeId.NtfCaptain:
+                    case RoleTypeId.NtfSpecialist:
+                    case RoleTypeId.NtfSergeant:
+                    case RoleTypeId.NtfPrivate:
+                    case RoleTypeId.FacilityGuard:
+                        var unitId = NamingRulesManager.GeneratedNames.TryGetValue(Team.FoundationForces, out var stringList) ? (byte)stringList.Count : (byte) 0;
+                        writer.WriteByte(unitId);
+                        break;
+                    case RoleTypeId.Scp0492:
+                        var _syncMaxHealth = (ushort)(Mathf.RoundToInt(Player.Get(source).MaxHealth / 10f) * 10);
+                        writer.WriteUShort(_syncMaxHealth);
+                        writer.WriteBool(true); // ConfirmationBox
+                        break;
+                    default:
+                        break;
+                }
+
 				return disguisedPlayer.Disguise;
 			}
 
@@ -62,67 +107,68 @@ namespace CustomFramework.CustomSubclasses
 
 		private static void PlayerEvents_ChangedRole(PlayerChangedRoleEventArgs ev)
 		{
-            if (ev.ChangeReason == CustomFlags.DontChangeSubclass) return;
-			
-            List<CustomSubclass> roleList;
-			if (ev.ChangeReason == CustomFlags.SpecifiedTeam)
-			{
-                roleList = Registered
-                    .Where(t => t.GetType().GetCustomAttributes<CustomSubclassAttribute>().Any(attr => attr.TeamString == ev.Player.CustomInfo) &&
-                        !Disabled.Contains(t) &&
-                        t.SpawnTickets != 0 &&
-                        t.SpawnConditionsMet(ev.Player) &&
-                        (
-                            ev.Player.RoleBase.ServerSpawnReason != RoleChangeReason.Escaped ||
-                            t.IsEscapeRole
-                        )
-                    )
-					.ToList();
+            RoleChangeReason customFlag;
+            if (!PlayerCustomFlags.TryGetValue(ev.Player, out customFlag))
+            {
+                customFlag = RoleChangeReason.None;
+            }
 
-				ev.Player.CustomInfo = null;
-			}
-			else
-				roleList = Registered
-					.Where(t => t.GetType().GetCustomAttributes<CustomSubclassAttribute>().Any(r => r.Team == ev.Player.Role) &&
-						!Disabled.Contains(t) &&
-                        t.SpawnTickets != 0 &&
-						t.SpawnConditionsMet(ev.Player) &&
-						(
-							ev.Player.RoleBase.ServerSpawnReason != RoleChangeReason.Escaped ||
-							t.IsEscapeRole
-						)
-					)
-					.ToList();
+            if (customFlag == CustomFlags.DontChangeSubclass) return;
+
+            List<CustomSubclass> roleList = new List<CustomSubclass>();
+            float sum = 0f;
+            bool specTeam = customFlag == CustomFlags.SpecifiedTeam;
+            string team;
+            if (specTeam)
+                team = ev.Player.CustomInfo;
+            else
+                team = ev.Player.Role.ToString();
+            foreach (var role in Registered)
+            {
+                var type = role.GetType();
+                var attrs = type.GetCustomAttributes<CustomSubclassAttribute>();
+
+                if (!attrs.Any(t => t.TeamString == team)) continue;
+                if (Disabled.Contains(role)) continue;
+                if (role.SpawnTickets <= 0) continue;
+                if (!role.SpawnConditionsMet(ev.Player)) continue;
+                if (ev.Player.RoleBase.ServerSpawnReason != RoleChangeReason.Escaped ||
+                    role.IsEscapeRole)
+                {
+                    roleList.Add(role);
+                    sum += role.SpawnTickets;
+                }
+            }
+
+            if (specTeam)
+                ev.Player.CustomInfo = null;
 
 			if (roleList.Count > 0)
 			{
-				List<CustomSubclass> weightedRoles = new List<CustomSubclass>();
+                var norm = Random.NextDouble();
+                float num = (float)(norm * sum);
 
-				foreach (var role in roleList)
+                CustomSubclass chosenRole = null;
+                foreach (var role in roleList)
+                {
+                    num -= role.SpawnTickets;
+                    if (num > 0) continue;
+                    chosenRole = role;
+                    break;
+                }
+
+				if (!PlayerSubclasses.TryGetValue(ev.Player, out var cs))
 				{
-					for (int i = 0; i < (int)role.SpawnTickets; i++)
-					{
-						weightedRoles.Add(role);
-					}
+					PlayerSubclasses.Add(ev.Player, null);
 				}
-
-				if (weightedRoles.Count > 0)
+				else
 				{
-					CustomSubclass chosenRole = weightedRoles[Random.Next(weightedRoles.Count)];
-
-					if (!PlayerSubclasses.TryGetValue(ev.Player, out var cs))
-					{
-						PlayerSubclasses.Add(ev.Player, null);
-					}
-					else
-					{
-                        chosenRole = cs?.OnChangingSubclass(ev.ChangeReason, chosenRole) ?? chosenRole;
-						cs?.RemoveSubclass(ev.Player);
-					}
-					chosenRole.GiveSubclass(ev.Player, false);
+                    chosenRole = cs?.OnChangingSubclass(ev.ChangeReason, chosenRole) ?? chosenRole;
+					cs?.RemoveSubclass(ev.Player);
 				}
+				chosenRole.GiveSubclass(ev.Player, ev.SpawnFlags);
 
-				Logger.Debug("Finished player spawned on Framework");
+				Logger.Debug("Finished player spawned on Framework", CustomFrameworkPlugin.Debug);
 			}
 			else
 			{
@@ -134,7 +180,7 @@ namespace CustomFramework.CustomSubclasses
 				{
 					cs?.RemoveSubclass(ev.Player);
 				}
-				Logger.Debug($"No subclasses found for team: {ev.Player.Role}");
+				Logger.Debug($"No subclasses found for team: {team}", CustomFrameworkPlugin.Debug);
 			}
 		}
 
@@ -185,9 +231,9 @@ namespace CustomFramework.CustomSubclasses
 
         //protected Vector3 PriorScale = Vector3.one;
 
-        public virtual void GiveSubclass(Player player, bool setRole)
+        public virtual void GiveSubclass(Player player, RoleSpawnFlags spawnFlags)
         {
-            Logger.Debug($"Giving {player.Nickname} {Identifier} subclass.");
+            Logger.Debug($"Giving {player.Nickname} {Identifier} subclass.", CustomFrameworkPlugin.Debug);
 
             TrackedPlayers.Add(player);
             player.CustomInfo = CustomInfo;
@@ -195,24 +241,26 @@ namespace CustomFramework.CustomSubclasses
             //PriorScale = player.ReferenceHub.transform.localScale;
             //player.ReferenceHub.transform.localScale = Vector3.Scale(player.ReferenceHub.transform.localScale, Scale);
             player.SetScale(Scale);
-            player.Gravity = Vector3.Scale(player.Gravity, Gravity);
+            //player.Gravity = Vector3.Scale(player.Gravity, Gravity);
+            //player.Gravity = Gravity;
             player.SendBroadcast($"You are the {Name}.\n{Description}", 5);
 
-            if (setRole && DefaultRole != null)
-                player.SetRole((RoleTypeId)DefaultRole, flags: RoleSpawnFlags.None, reason: CustomFlags.DontChangeSubclass);
+            //if (DefaultRole != null)
+            //    player.SetRole((RoleTypeId)DefaultRole, flags: RoleSpawnFlags.None, reason: CustomFlags.DontChangeSubclass);
 		}
 
         public virtual void RemoveSubclass(Player player)
         {
-			Logger.Debug($"Removing {Identifier} subclass from {player.Nickname}.");
+			Logger.Debug($"Removing {Identifier} subclass from {player.Nickname}.", CustomFrameworkPlugin.Debug);
 
             if (player == null) return;
 
             if (TrackedPlayers.Contains(player))
                 TrackedPlayers.Remove(player);
             player.CustomInfo = "";
+            PlayerPreviousSubclasses[player] = this;
             PlayerSubclasses[player] = null;
-            player.ReferenceHub.transform.localScale = Vector3.one;
+            player.SetScale(Vector3.one);
 
             if (this is IAbilityDuration duration)
                 duration.ActiveAbilities.Remove(player);
@@ -288,6 +336,7 @@ namespace CustomFramework.CustomSubclasses
             Registered.FirstOrDefault(t => t.Id == id);
 
         public static CustomSubclass Get(Player player) =>
-            Registered.FirstOrDefault(r => r.Check(player));
+            PlayerSubclasses.TryGetValue(player, out var val) ? val : null;
+            //Registered.FirstOrDefault(r => r.Check(player));
     }
 }

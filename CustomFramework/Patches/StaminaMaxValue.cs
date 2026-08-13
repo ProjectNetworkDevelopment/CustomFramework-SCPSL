@@ -11,8 +11,8 @@ namespace CustomFramework.Patches
 {
 	// Patch originated from Xname: https://github.com/Xname7
 
-	[HarmonyPriority(Priority.VeryLow)]
-	[HarmonyPatch(typeof(FpcStateProcessor), nameof(FpcStateProcessor.UpdateMovementState))]
+	//[HarmonyPriority(Priority.VeryLow)]
+	//[HarmonyPatch(typeof(FpcStateProcessor), nameof(FpcStateProcessor.UpdateMovementState))]
 	internal class StaminaMaxValue
 	{
 		private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)

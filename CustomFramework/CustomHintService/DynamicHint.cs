@@ -8,13 +8,18 @@ namespace CustomFramework.CustomHintService
 {
 	public class DynamicHint
 	{
+		public DynamicHint(Func<Player, string> method)
+		{
+			HintMethod = method;
+		}
+
 		public DynamicHint(Style style, Func<Player, string> method)
 		{
 			Style = style;
 			HintMethod = method;
 		}
 
-		public Style Style { get; set; }
+		public Style Style { get; set; } = Style.Default;
 		public TimeSpan UpdateTime { get; set; }
 		public Func<Player, string> HintMethod { get; set; }
 		internal Dictionary<Player, string> hints = new Dictionary<Player, string>();
