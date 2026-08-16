@@ -68,6 +68,7 @@ namespace CustomFramework.CustomTeams
 				if (team.SpawnTickets <= 0f) continue;
 
 				teamList.Add(team);
+				sum += team.SpawnTickets;
 			}
 
 			if (teamList.Count > 0)
